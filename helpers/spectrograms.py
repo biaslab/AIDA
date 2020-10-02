@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
 
-fs, y = wavfile.read("speech/clean.wav")
-fs, x = wavfile.read("speech/noised.wav")
-fs, z = wavfile.read("speech/filtered.wav")
+fs, y = wavfile.read("/Users/albertpod/Julia/AIDA/speech/clean.wav")
+fs, x = wavfile.read("/Users/albertpod/Julia/AIDA/speech/noised.wav")
+fs, z = wavfile.read("/Users/albertpod/Julia/AIDA/speech/filtered.wav")
 
 
 fig, axs = plt.subplots(3)
@@ -16,4 +16,4 @@ axs[2].set_title("Filtered")
 
 
 axs[2].set(xlabel='Time s', ylabel='Hz')
-plt.savefig("img/result.png")
+plt.savefig("/Users/albertpod/Julia/AIDA/img/result.png")
