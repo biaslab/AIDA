@@ -99,6 +99,6 @@ function act(action; feedback, prior, vmp_iter)
         stepAUN!(data, marginals, messages_2)
         push!(fe, freeEnergyA(data, marginals))
     end
-    
+
     return marginals, fe
 end
