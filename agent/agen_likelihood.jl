@@ -12,7 +12,21 @@ function learner()
 end
 
 function learner()
+    fg = FactorGraph()
 
+    # State prior
+    @RV θ ~ GaussianMeanPrecision(placeholder(:m_θ), placeholder(:v_θ))
+
+    @RV ωn ~ GaussianMeanPrecision(placeholder(:m_ω), 1e2)
+    @RV r ~ Nonlinear{Sampling}(ωn, θ, g=regress)
+    @RV rf ~ GaussianMeanPrecision(r, placeholder(:w_rf))
+    # Data placeholder
+    placeholder(rf, :rf)
+
+    # Reset state for next step
+    q = PosteriorFactorization(ωs, us, ωn, ids=[:ΩS :US :ΩN])
+    algo = messagePassingAlgorithm(free_energy=true)
+    source_code = algorithmSourceCode(algo, free_energy=true)
 end
 
 function agent_init()
@@ -97,9 +111,37 @@ function generate_data(n_samples, θ_0)
     return ω, r
 end
 
-inputs, outputs = generate_data(10000, 0.6)
+inputs, outputs = generate_data(100, 0.6)
 
 scatter(inputs, outputs)
+
+fg = FactorGraph()
+
+# State prior
+@RV θ ~ GaussianMeanPrecision(placeholder(:m_θ), placeholder(:w_θ))
+
+@RV ωn ~ GaussianMeanPrecision(placeholder(:m_ω), 1.0)
+@RV r ~ Nonlinear{Sampling}(ωn, θ, g=regress)
+@RV rf ~ GaussianMeanPrecision(r, placeholder(:w_rf))
+# Data placeholder
+placeholder(rf, :rf)
+
+# Reset state for next step
+q = PosteriorFactorization(θ, ids=[:Θ])
+algo = messagePassingAlgorithm(free_energy=true)
+source_code = algorithmSourceCode(algo, free_energy=true)
+eval(Meta.parse(source_code))
+
+m_θ_min, w_θ_min = 0.0, 0.1
+messages = initΘ()
+for i in 1:length(outputs)
+    priors = Dict(:rf => outputs[i],
+                  :m_θ => m_θ_min, :w_θ => w_θ_min,
+                  :m_ω => inputs[i], :w_rf => 1e10)
+    stepΘ!(priors, marginals)
+    m_θ_min = ForneyLab.unsafeMean(marginals[:θ])
+    w_θ_min = ForneyLab.unsafePrecision(marginals[:θ])
+end
 
 using Flux
 import Flux: @epochs
