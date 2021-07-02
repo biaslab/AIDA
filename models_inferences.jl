@@ -110,14 +110,21 @@ function inference_gaussian(outputs, niter)
 end
 
 # classical latent AR model
-@model function lar_model(n, order, artype, c, τ)
+@model function lar_model(n, order, artype, c, τ, priors)
 
+    if isempty(priors)
+        priors[:mθ] = randn(order)
+        priors[:vθ] = Matrix{Float64}(I, order, order)
+        priors[:aγ] = 1.0
+        priors[:bγ] = 1e-4
+    end
+    
     x = randomvar(n)
     y = datavar(Float64, n)
     ct  = constvar(c)
 
-    γ ~ GammaShapeRate(1.0, 1e-4) where {q=MeanField()}
-    θ ~ MvNormalMeanPrecision(randn(order), Matrix{Float64}(I, order, order)) where {q=MeanField()}
+    γ ~ GammaShapeRate(priors[:aγ],  priors[:bγ]) where {q=MeanField()}
+    θ ~ MvNormalMeanPrecision(priors[:mθ], priors[:vθ]) where {q=MeanField()}
     x0 ~ MvNormalMeanPrecision(zeros(order), Matrix{Float64}(I, order, order)) where {q=MeanField()}
 
     x_prev = x0
@@ -135,12 +142,20 @@ end
     return y, x, θ, γ, ar_nodes
 end
 
-function lar_inference(data, order, niter, τ)
+function lar_inference(data, order, niter, τ; priors=Dict(), marginals=Dict())
     n = length(data)
     artype = Multivariate
     c = zeros(order); c[1] = 1.0
-    model, (y, x, θ, γ, ar_nodes) = lar_model(n, order, artype, c, τ)
+    model, (y, x, θ, γ, ar_nodes) = lar_model(n, order, artype, c, τ, priors)
 
+    
+    if isempty(marginals)
+        marginals[:mθ] = zeros(order)
+        marginals[:vθ] = Matrix{Float64}(I, order, order)
+        marginals[:aγ] = 1.0
+        marginals[:bγ] = 1e-4
+    end
+    
     γ_buffer = nothing
     θ_buffer = nothing
     x_buffer = Vector{Marginal}(undef, n)
@@ -151,8 +166,8 @@ function lar_inference(data, order, niter, τ)
     xsub = subscribe!(getmarginals(x), (mx) -> copyto!(x_buffer, mx))
     fesub = subscribe!(score(Float64, BetheFreeEnergy(), model), (f) -> push!(fe, f))
 
-    setmarginal!(γ, GammaShapeRate(1.0, 1e-4))
-    setmarginal!(θ, MvNormalMeanPrecision(zeros(order), Matrix{Float64}(I, order, order)))
+    setmarginal!(γ, GammaShapeRate(marginals[:aγ], marginals[:bγ]))
+    setmarginal!(θ, MvNormalMeanPrecision(marginals[:mθ], Matrix{Float64}(I, order, order)))
 
     for i in 1:n
         setmarginal!(ar_nodes[i], :y_x, MvNormalMeanPrecision(zeros(2*order), Matrix{Float64}(I, 2*order, 2*order)))
