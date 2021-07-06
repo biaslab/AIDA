@@ -69,7 +69,7 @@ end
 
 
 # Auxilary model to infer stationary noise variance
-@model function gaussian_model(n)
+@model function gaussian_model(n, τ)
 
     y = datavar(Float64, n)
 
@@ -78,15 +78,15 @@ end
     x   ~ NormalMeanPrecision(x_0, γ) where {q=MeanField()}
 
     for i in 1:n
-        y[i] ~ NormalMeanPrecision(x, 1e4) where {q=MeanField()}
+        y[i] ~ NormalMeanPrecision(x, τ) where {q=MeanField()}
     end
 
     return y, x, γ
 end
 # Gaussian inference
-function inference_gaussian(outputs, niter)
+function inference_gaussian(outputs, niter, τ)
     n = length(outputs)
-    model, (y, x, γ) = gaussian_model(n, options = (limit_stack_depth = 500, ))
+    model, (y, x, γ) = gaussian_model(n, τ, options = (limit_stack_depth = 500, ))
     γ_buffer = nothing
     x_buffer = nothing
     fe = Vector{Float64}()
