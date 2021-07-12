@@ -260,7 +260,7 @@ ReactiveMP.apply_pipeline_stage(stage::InitARMessages, factornode, tag, stream) 
         z_prev = z[i]
     end
     
-    scheduler = schedule_updates(x, θ, γ, z, η, τ)
+    scheduler = schedule_updates(z, η, τ, x, θ, γ)
 
     return o, z, z1, θ, γ, x, x1, η, τ, ar_1_nodes, ar_2_nodes, scheduler
 end
