@@ -6,8 +6,13 @@ function get_frames(signal, fs; len_sec=0.01, overlap_sec=0.0025)
     totseg = Int(ceil(length(signal)/(l-overlap)))
     segment = zeros(totseg, l)
     for i in 1:totseg - 1
-        segment[i,1:l]=signal[start:start+l-1]
-        start = (l-overlap)*i+1
+        try
+            segment[i,1:l]=signal[start:start+l-1]
+            start = (l-overlap)*i+1
+        catch
+            totseg -= 1
+            break
+        end
     end
     segment[totseg, 1:length(signal)-start+1] = signal[start:length(signal)]
     return segment
@@ -28,4 +33,9 @@ function get_signal(frames, fs; len_sec=0.01, overlap_sec=0.0025)
         start = start + l - overlap - 1
     end
     signal
+end
+
+function signal_alignment(signal, fs; len_sec=0.01, overlap_sec=0.0025)
+    frames = get_frames(signal, fs, len_sec=len_sec, overlap_sec=overlap_sec)
+    get_signal(frames, fs, len_sec=len_sec, overlap_sec=overlap_sec)
 end
