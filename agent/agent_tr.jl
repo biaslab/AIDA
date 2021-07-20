@@ -1,4 +1,4 @@
-using Turing
+import Turing
 using Flux
 using Plots
 
@@ -25,7 +25,7 @@ function nn_forward(xs, nn_params::AbstractVector)
 end;
 
 # Specify the probabalistic model.
-@model function prefernce_learning(gs, fdb, reg=3.3)
+Turing.@model function prefernce_learning(gs, fdb, reg=3.3)
     # Create the weight and bias vector.
     nn_params ~ MvNormal(zeros(20), reg .* ones(20))
     
