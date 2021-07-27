@@ -1,4 +1,3 @@
-using ForneyLab
 using Flux
 import Turing
 
@@ -14,7 +13,7 @@ function unpack(nn_params::AbstractVector)
 end
 
 # Construct a neural network using Flux and return a predicted value.
-function nn_forward(xs, nn_params::AbstractVector)
+function nn_forward(xs::AbstractVector, nn_params::AbstractVector)
     W1, b1, W2, b2, Wo, bo = unpack(nn_params)
     nn = Chain(Dense(W1, b1, tanh),
                Dense(W2, b2, tanh),
@@ -37,28 +36,18 @@ Turing.@model function prefernce_learning(gs, fdb, reg=3.3)
     end
 end;
 
-# define inference graph
-function build_est_graph(n_gs, nn_params, n_samples=1)
-    graph = ForneyLab.FactorGraph()
 
-    @RV gs ~ GaussianMeanVariance(
-              placeholder(:mu_gs, dims=(n_gs,)), 
-              placeholder(:Sigma_gs, dims=(n_gs,n_gs)))
-
-
-    z = Vector{Variable}(undef, n_samples)
-    y = Vector{Variable}(undef, n_samples)
-    for n in 1:n_samples
-        @eval $(Symbol("func$n"))(x) = nn_forward(x, nn_params)
-        @RV z[n] ~ Nonlinear{Sampling}(gs,g=eval(Symbol("func$n")),in_variates=[Multivariate],out_variate=Univariate)
-        if n == n_samples
-            @RV y[n] ~ GaussianMeanVariance(z[n], 1e-4)
-            placeholder(y[n], :y, index=n)
-        else
-            @RV y[n] ~ Bernoulli(z[n])
-            placeholder(y[n], :y, index=n)
-        end
-    end
+# Specify the probabalistic model.
+Turing.@model function planning(nn_params, fdb, context)
+    # Create the weight and bias vector.
+    gs ~ Turing.MvNormal([1.0, 1.0, context], [1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1e-5])
     
-    return graph
-end
+    # Calculate predictions for the inputs given the weights
+    # and biases
+    preds = nn_forward(gs, nn_params)
+    
+    # Observe each prediction.
+    for i in 1:length(fdb)
+        fdb[i] ~ Turing.Bernoulli(preds[i])
+    end
+end;
