@@ -13,7 +13,7 @@ function unpack(nn_params::AbstractVector)
 end
 
 # Construct a neural network using Flux and return a predicted value.
-function nn_forward(xs::AbstractVector, nn_params::AbstractVector)
+function nn_forward(xs::AbstractArray, nn_params::AbstractVector)
     W1, b1, W2, b2, Wo, bo = unpack(nn_params)
     nn = Chain(Dense(W1, b1, tanh),
                Dense(W2, b2, tanh),
