@@ -7,7 +7,7 @@ using Rocket
     # initialize variables
     x_lat  = randomvar(nr_samples)
     y_lat1 = randomvar(nr_samples)
-    y_lat2 = randomvar(nr_samples)
+    y_lat2 = randomvar(nr_samples) #where {prod_constraint=ProdPreserveType(NormalWeightedMeanPrecision)}
     y      = datavar(Float64, nr_samples)
     x      = datavar(Vector{Float64}, nr_samples)
 
@@ -26,10 +26,10 @@ using Rocket
 
         # specify transformed latent value
         y_lat1[k] ~ Flow(x_lat[k]) where { meta = meta }
-        y_lat2[k] ~ dot(y_lat1[k], [1, 1])
+        y_lat2[k] ~ dot(y_lat1[k], [1, 1]) #where {pipeline=LoggerPipelineStage("dot")}
 
         # specify observations
-        y[k] ~ Probit(y_lat2[k]) # default: where { pipeline = RequireInbound(in = NormalMeanPrecision(0, 1.0)) }
+        y[k] ~ Probit(y_lat2[k]) #where {pipeline=LoggerPipelineStage("probit")} # default: where { pipeline = RequireInbound(in = NormalMeanPrecision(0, 1.0)) }
 
     end
 
