@@ -16,13 +16,13 @@ using Rocket
                         ReverseNiceLayer(  PlanarMap(params[4],  params[5],  params[6])),
                         NiceLayer(         PlanarMap(params[7],  params[8],  params[9])),
                         ReverseNiceLayer(  PlanarMap(params[10], params[11], params[12]))))
-    meta  = FlowMeta(model, Unscented(2)) # default: FlowMeta(model, Linearization())
+    meta  = FlowMeta(model, Linearization()) # default: FlowMeta(model, Linearization())
 
     # specify observations
     for k = 1:nr_samples
 
         # specify latent state
-        x_lat[k] ~ MvNormalMeanPrecision(x[k], 1e3*diagm(ones(2)))
+        x_lat[k] ~ MvNormalMeanPrecision(x[k], 1e12*diagm(ones(2)))
 
         # specify transformed latent value
         y_lat1[k] ~ Flow(x_lat[k]) where { meta = meta }
