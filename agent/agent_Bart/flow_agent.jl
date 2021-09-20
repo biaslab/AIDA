@@ -12,11 +12,11 @@ using Rocket
     x      = datavar(Vector{Float64}, nr_samples)
 
     # specify model
-    model = FlowModel( (NiceLayer(         PlanarMap(params[1],  params[2],  params[3])),
-                        ReverseNiceLayer(  PlanarMap(params[4],  params[5],  params[6])),
-                        NiceLayer(         PlanarMap(params[7],  params[8],  params[9])),
-                        ReverseNiceLayer(  PlanarMap(params[10], params[11], params[12]))))
-    meta  = FlowMeta(model, Linearization()) # default: FlowMeta(model, Linearization())
+    model = FlowModel( (AdditiveCouplingLayer(         PlanarFlow(params[1],  params[2],  params[3])),
+                        ReverseAdditiveCouplingLayer(  PlanarFlow(params[4],  params[5],  params[6])),
+                        AdditiveCouplingLayer(         PlanarFlow(params[7],  params[8],  params[9])),
+                        ReverseAdditiveCouplingLayer(  PlanarFlow(params[10], params[11], params[12]))))
+    meta  = FlowMeta(model) # default: FlowMeta(model, Linearization())
 
     # specify observations
     for k = 1:nr_samples
