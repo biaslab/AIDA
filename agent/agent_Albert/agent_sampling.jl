@@ -51,3 +51,55 @@ Turing.@model function planning(nn_params, fdb, context)
         fdb[i] ~ Turing.Bernoulli(preds[i])
     end
 end;
+
+
+# Returns paramaters of a neural netwrok that provides the highest log posterior.
+function learning(gains, contexts, appraisals, N=1000; g_jitter=1e-4)
+    # adding jitter to gains might be useful when dealing with small number of observations
+    gains = [g .+ sqrt(g_jitter)*randn(length(g)) for g in gains]
+    inputs = [vcat(g, c) for (g, c) in zip(gains, contexts)]
+    ch = Turing.sample(prefernce_learning(hcat(inputs...), appraisals, 1.0), Turing.HMC(0.05, 10), N);
+    # Extract all weight and bias parameters.
+    theta = Turing.MCMCChains.group(ch, :nn_params).value;
+    # Find the index that provided the highest log posterior in the chain.
+    _, i = findmax(ch[:lp])
+    i = i.I[1]
+    θ = Float64.(theta[i, :])
+end
+
+# nn_params = learning(gains, contexts, appraisals);
+
+# # Alternative (in case you don't want to use learning function)
+# gains₊ = [g .+ sqrt(1e-4)*randn(length(g)) for g in gains]
+# inputs = [vcat(g, c) for (g, c) in zip(gains, contexts)]
+# ch = Turing.sample(prefernce_learning(hcat(inputs...), appraisals, 1.0), Turing.HMC(0.05, 10), 1000);
+
+
+# sumstats = Turing.summarize(ch, Turing.mean, Turing.std)
+# mθ, vθ   = sumstats.nt.mean, sumstats.nt.std;
+
+# theta = Turing.MCMCChains.group(ch, :nn_params).value;
+# # Find the index that provided the highest log posterior in the chain.
+# _, i = findmax(ch[:lp])
+# i = i.I[1]
+# θ = theta[i, :];
+
+# predictions = []
+# for n in 1:length(appraisals)
+#     push!(predictions, nn_forward(inputs[n], θ))
+# end
+
+# # Check for errors on training set
+# appraisals_ = [rand(Distributions.Bernoulli(p[1])) for p in predictions]
+# err = sum(abs.(appraisals .- appraisals_))
+
+
+# infer gains
+# function sample_gains(context, nn_params, N=1000)
+#     ch = Turing.sample(planning(nn_params, [1.0], context), Turing.HMC(0.01, 4), N);
+#     gains_context = Turing.MCMCChains.group(ch, :gs).value
+#     # Find the index that provided the highest log posterior in the chain.
+#     _, i = findmax(ch[:lp])
+#     i = i.I[1]
+#     Float64.(gains_context[i, :])
+# end
