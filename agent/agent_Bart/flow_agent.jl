@@ -63,3 +63,58 @@ function inference_flow_classifier(data_y::Array{Float64,1}, data_x::Array{Array
     return fe_buffer
 
 end;
+
+
+@model function flow_planner(m_gains, cov_gains, params)
+    
+    # initialize variables
+    y_goal = datavar(Float64)
+
+    # specify model
+    model = FlowModel( (AdditiveCouplingLayer(         PlanarFlow(params[1],  params[2],  params[3])),
+                        ReverseAdditiveCouplingLayer(  PlanarFlow(params[4],  params[5],  params[6])),
+                        AdditiveCouplingLayer(         PlanarFlow(params[7],  params[8],  params[9])),
+                        ReverseAdditiveCouplingLayer(  PlanarFlow(params[10], params[11], params[12]))))
+    meta  = FlowMeta(model) 
+
+    x_lat ~ MvNormalMeanCovariance(m_gains, cov_gains) where { q = MeanField() }
+
+    # specify transformed latent value
+    y_lat1 ~ Flow(x_lat) where { meta = meta }
+    y_lat2 ~ dot(y_lat1, [1, 1])
+
+    # specify observations
+    y_goal ~ Probit(y_lat2)
+
+    # return variables
+    return x_lat, y_lat1, y_lat2, y_goal
+
+end
+
+function inference_flow_planner(m_gains, cov_gains, goal::Float64, params; vmp_iter=10)
+    
+
+    # define model
+    model, (x_lat, y_lat1, y_lat2, y_goal) = flow_planner(m_gains, cov_gains, params)
+
+    x_buffer = nothing
+    xsub = subscribe!(getmarginal(x_lat), (mx) -> x_buffer = mx)
+    
+    # initialize free energy
+    fe_buffer = keep(Real)
+    
+    # subscribe
+    fe_sub = subscribe!(score(BetheFreeEnergy(), model), fe_buffer)
+    
+    
+    # update y and x according to observations (i.e. perform inference)
+    for i in 1:100
+        ReactiveMP.update!(y_goal, goal)
+    end
+    # unsubscribe
+    unsubscribe!(fe_sub)
+    
+    # return the marginal values
+    return fe_buffer, x_buffer
+
+end;
