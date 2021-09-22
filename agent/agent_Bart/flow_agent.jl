@@ -2,6 +2,16 @@ using ReactiveMP
 using GraphPPL
 using Rocket
 
+# specify flow model
+model = FlowModel(2,
+    (
+        AdditiveCouplingLayer(PlanarFlow()), # defaults to AdditiveCouplingLayer(PlanarFlow(); permute=true)
+        AdditiveCouplingLayer(PlanarFlow()),
+        AdditiveCouplingLayer(PlanarFlow()),
+        AdditiveCouplingLayer(PlanarFlow())
+    )
+) 
+
 @model function flow_classifier(nr_samples::Int64, params)
     
     # initialize variables
@@ -11,12 +21,7 @@ using Rocket
     y      = datavar(Float64, nr_samples)
     x      = datavar(Vector{Float64}, nr_samples)
 
-    # specify model
-    model = FlowModel( (AdditiveCouplingLayer(         PlanarFlow(params[1],  params[2],  params[3])),
-                        ReverseAdditiveCouplingLayer(  PlanarFlow(params[4],  params[5],  params[6])),
-                        AdditiveCouplingLayer(         PlanarFlow(params[7],  params[8],  params[9])),
-                        ReverseAdditiveCouplingLayer(  PlanarFlow(params[10], params[11], params[12]))))
-    meta  = FlowMeta(model) # default: FlowMeta(model, Linearization())
+    meta  = FlowMeta(compile(model, params))
 
     # specify observations
     for k = 1:nr_samples
@@ -70,12 +75,7 @@ end;
     # initialize variables
     y_goal = datavar(Float64)
 
-    # specify model
-    model = FlowModel( (AdditiveCouplingLayer(         PlanarFlow(params[1],  params[2],  params[3])),
-                        ReverseAdditiveCouplingLayer(  PlanarFlow(params[4],  params[5],  params[6])),
-                        AdditiveCouplingLayer(         PlanarFlow(params[7],  params[8],  params[9])),
-                        ReverseAdditiveCouplingLayer(  PlanarFlow(params[10], params[11], params[12]))))
-    meta  = FlowMeta(model) 
+    meta  = FlowMeta(compile(model, params))
 
     x_lat ~ MvNormalMeanCovariance(m_gains, cov_gains) where { q = MeanField() }
 
