@@ -1,21 +1,21 @@
 # Extension for Addition node 
-@marginalrule typeof(+)(:in1_in2) (m_out::UnivariateNormalDistributionsFamily, m_in1::UnivariateNormalDistributionsFamily, m_in2::UnivariateNormalDistributionsFamily) = begin
-    xi_out = weightedmean(m_out)
-    W_out  = precision(m_out)
-    xi_in1 = weightedmean(m_in1)
-    W_in1  = precision(m_in1)
-    xi_in2 = weightedmean(m_in2)
-    W_in2  = precision(m_in2)
+# @marginalrule typeof(+)(:in1_in2) (m_out::UnivariateNormalDistributionsFamily, m_in1::UnivariateNormalDistributionsFamily, m_in2::UnivariateNormalDistributionsFamily) = begin
+#     xi_out = weightedmean(m_out)
+#     W_out  = precision(m_out)
+#     xi_in1 = weightedmean(m_in1)
+#     W_in1  = precision(m_in1)
+#     xi_in2 = weightedmean(m_in2)
+#     W_in2  = precision(m_in2)
     
-    return MvNormalWeightedMeanPrecision([xi_in1+xi_out; xi_in2+xi_out], [W_in1+W_out W_out; W_out W_in2+W_out])
-end
+#     return MvNormalWeightedMeanPrecision([xi_in1+xi_out; xi_in2+xi_out], [W_in1+W_out W_out; W_out W_in2+W_out])
+# end
 
-@rule typeof(+)(:in1, Marginalisation) (m_out::UnivariateNormalDistributionsFamily, m_in2::UnivariateNormalDistributionsFamily) = begin
-    return NormalMeanVariance(mean(m_out) - mean(m_in2), var(m_out) + var(m_in2))
-end
-@rule typeof(+)(:in2, Marginalisation) (m_out::UnivariateNormalDistributionsFamily, m_in1::UnivariateNormalDistributionsFamily) = begin
-    return NormalMeanVariance(mean(m_out) - mean(m_in1), var(m_out) + var(m_in1))
-end
+# @rule typeof(+)(:in1, Marginalisation) (m_out::UnivariateNormalDistributionsFamily, m_in2::UnivariateNormalDistributionsFamily) = begin
+#     return NormalMeanVariance(mean(m_out) - mean(m_in2), var(m_out) + var(m_in2))
+# end
+# @rule typeof(+)(:in2, Marginalisation) (m_out::UnivariateNormalDistributionsFamily, m_in1::UnivariateNormalDistributionsFamily) = begin
+#     return NormalMeanVariance(mean(m_out) - mean(m_in1), var(m_out) + var(m_in1))
+# end
 
 # Coupled AR auxilary piplelines
 struct InitARMessages{M} <: ReactiveMP.AbstractPipelineStage 
