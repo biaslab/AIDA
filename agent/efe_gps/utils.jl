@@ -109,5 +109,5 @@ function get_new_proposal(grid,x1,y1,current,σ,l)
     # Find the minimum and try it out
     idx = argmin(value_grid)
     x2 = collect(grid)[idx]
-    x2,value_grid
+    x2#,value_grid
 end
