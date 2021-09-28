@@ -16,7 +16,7 @@
 end
 
 # AR inference
-function inference_ar(inputs, outputs, order, niter)
+function ar_inference(inputs, outputs, order, niter)
     n = length(outputs)
     model, (x, y, θ, γ) = ar_model(n, order, options = (limit_stack_depth = 500, ))
 

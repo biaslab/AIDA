@@ -1,3 +1,22 @@
+export prior_to_priors
+export get_frames, get_signal
+export ar_ssm
+
+
+# coupled AR model is deisgned to work with time-varying priors for both speech and environmental noise
+# prior_to_priors map "static" priors to the corresponding matrices with equal elements
+function prior_to_priors(mη, vη, τ, totseg)
+    ar_order = size(mη, 2)
+    rmη = zeros(totseg, ar_order)
+    rvη = zeros(totseg, ar_order, ar_order)
+    for segnum in 1:totseg
+        rmη[segnum, :], rvη[segnum, :, :] = reshape(mη, (ar_order,)), vη
+    end
+    priors_eta = rmη, rvη
+    priors_tau = [τ for _ in 1:totseg]
+    priors_eta[1], priors_eta[2], priors_tau
+end
+
 # splitting signal into frames
 function get_frames(signal, fs; len_sec=0.01, overlap_sec=0.0025)
     start = 1
@@ -38,4 +57,14 @@ end
 function signal_alignment(signal, fs; len_sec=0.01, overlap_sec=0.0025)
     frames = get_frames(signal, fs, len_sec=len_sec, overlap_sec=overlap_sec)
     get_signal(frames, fs, len_sec=len_sec, overlap_sec=overlap_sec)
+end
+
+function ar_ssm(series, order)
+    inputs = [reverse!(series[1:order])]
+    outputs = [series[order + 1]]
+    for x in series[order+2:end]
+        push!(inputs, vcat(outputs[end], inputs[end])[1:end-1])
+        push!(outputs, x)
+    end
+    return inputs, outputs
 end
