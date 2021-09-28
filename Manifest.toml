@@ -291,12 +291,15 @@ git-tree-sha1 = "8041575f021cba5a099a456b4163c9a08b566a02"
 uuid = "da5c29d0-fa7d-589e-88eb-ea29b0a81949"
 version = "1.1.0"
 
+<<<<<<< HEAD
 [[Expat_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "b3bfd02e98aedfa5cf885665493c5598c350cd2f"
 uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
 version = "2.2.10+0"
 
+=======
+>>>>>>> restructured
 [[ExprTools]]
 git-tree-sha1 = "b7e3d17636b348f005f11040025ae8c6f645fe92"
 uuid = "e2ba6199-217a-4e67-a87a-7c52f15ade04"
@@ -407,6 +410,7 @@ git-tree-sha1 = "e8a09182a4440489e2e3dedff5ad3f6bbe555396"
 uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
 version = "0.12.5"
 
+<<<<<<< HEAD
 [[GR]]
 deps = ["Base64", "DelimitedFiles", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Printf", "Random", "Serialization", "Sockets", "Test", "UUIDs"]
 git-tree-sha1 = "c2178cfbc0a5a552e16d097fae508f2024de61a3"
@@ -419,6 +423,8 @@ git-tree-sha1 = "ef49a187604f865f4708c90e3f431890724e9012"
 uuid = "d2c73de3-f751-5644-a686-071e5b155ba9"
 version = "0.59.0+0"
 
+=======
+>>>>>>> restructured
 [[GaussQuadrature]]
 deps = ["SpecialFunctions"]
 git-tree-sha1 = "45bf52a9fb04350d8771ad694772c18c878683b6"
@@ -431,6 +437,7 @@ git-tree-sha1 = "9cf8ba8037e332b1be14c71e549143e68c42a22d"
 uuid = "891a1506-143c-57d2-908e-e1f8e92e6de9"
 version = "0.12.4"
 
+<<<<<<< HEAD
 [[GeometryBasics]]
 deps = ["EarCut_jll", "IterTools", "LinearAlgebra", "StaticArrays", "StructArrays", "Tables"]
 git-tree-sha1 = "58bcdf5ebc057b085e58d95c138725628dd7453c"
@@ -449,12 +456,15 @@ git-tree-sha1 = "7bf67e9a481712b3dbe9cb3dac852dc4b1162e02"
 uuid = "7746bdde-850d-59dc-9ae8-88ece973131d"
 version = "2.68.3+0"
 
+=======
+>>>>>>> restructured
 [[GraphPPL]]
 deps = ["MacroTools", "TupleTools"]
 git-tree-sha1 = "d22d2808025bcb466b408e62594633df880d66fe"
 uuid = "b3f8163a-e979-4e85-b43e-1f63d8c8b42c"
 version = "1.0.5"
 
+<<<<<<< HEAD
 [[Graphics]]
 deps = ["Colors", "LinearAlgebra", "NaNMath"]
 git-tree-sha1 = "2c1cf4df419938ece72de17f368a021ee162762e"
@@ -472,12 +482,15 @@ git-tree-sha1 = "53bb909d1151e57e2484c3d1b53e19552b887fb2"
 uuid = "42e2da0e-8278-4e71-bc24-59509adca0fe"
 version = "1.0.2"
 
+=======
+>>>>>>> restructured
 [[HCubature]]
 deps = ["Combinatorics", "DataStructures", "LinearAlgebra", "QuadGK", "StaticArrays"]
 git-tree-sha1 = "134af3b940d1ca25b19bc9740948157cee7ff8fa"
 uuid = "19dc6840-f33b-545b-b366-655c7e3ffd49"
 version = "1.5.0"
 
+<<<<<<< HEAD
 [[HDF5]]
 deps = ["Blosc", "Compat", "HDF5_jll", "Libdl", "Mmap", "Random", "Requires"]
 git-tree-sha1 = "83173193dc242ce4b037f0263a7cc45afb5a0b85"
@@ -502,6 +515,8 @@ git-tree-sha1 = "8a954fed8ac097d5be04921d595f741115c1b2ad"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "2.8.1+0"
 
+=======
+>>>>>>> restructured
 [[HostCPUFeatures]]
 deps = ["IfElse", "Libdl", "Static"]
 git-tree-sha1 = "e86382a874edd4ff47fd1373e03f38302af93345"
@@ -553,11 +568,14 @@ git-tree-sha1 = "3cc368af3f110a767ac786560045dceddfc16758"
 uuid = "8197267c-284f-5f27-9208-e0e47529a953"
 version = "0.5.3"
 
+<<<<<<< HEAD
 [[IterTools]]
 git-tree-sha1 = "05110a2ab1fc5f932622ffea2a003221f4782c18"
 uuid = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 version = "1.3.0"
 
+=======
+>>>>>>> restructured
 [[IteratorInterfaceExtensions]]
 git-tree-sha1 = "a3f24677c21f5bbe9d2a714f95dcd58337fb2856"
 uuid = "82899510-4779-5014-852e-03e436cf321d"
@@ -1037,9 +1055,18 @@ version = "1.4.0"
 
 [[ReactiveMP]]
 deps = ["DataStructures", "Distributions", "DomainIntegrals", "DomainSets", "FastGaussQuadrature", "ForwardDiff", "LinearAlgebra", "LoopVectorization", "MacroTools", "Optim", "PositiveFactorizations", "Random", "Rocket", "SpecialFunctions", "StaticArrays", "StatsBase", "StatsFuns", "TupleTools"]
+<<<<<<< HEAD
 git-tree-sha1 = "fd999814f2b9f106932331dfef33008cc488c53f"
 uuid = "a194aa59-28ba-4574-a09c-4a745416d6e3"
 version = "1.0.5"
+=======
+git-tree-sha1 = "7d76415267172a98e6da8704198d6cf37651ce86"
+pinned = true
+repo-rev = "develop-flow"
+repo-url = "https://github.com/biaslab/ReactiveMP.jl.git"
+uuid = "a194aa59-28ba-4574-a09c-4a745416d6e3"
+version = "1.0.4"
+>>>>>>> restructured
 
 [[RecipesBase]]
 git-tree-sha1 = "b3fb709f3c97bfc6e948be68beeecb55a0b340ae"
@@ -1265,11 +1292,14 @@ git-tree-sha1 = "3c712976c47707ff893cf6ba4354aa14db1d8938"
 uuid = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
 version = "1.3.0"
 
+<<<<<<< HEAD
 [[URIs]]
 git-tree-sha1 = "97bbe755a53fe859669cd907f2d96aee8d2c1355"
 uuid = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
 version = "1.3.0"
 
+=======
+>>>>>>> restructured
 [[UUIDs]]
 deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
