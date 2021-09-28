@@ -1,3 +1,5 @@
+export get_sounds_fn
+
 # return list of files from dir_name
 function get_sounds_fn(dir_name::String)
     file_names = []

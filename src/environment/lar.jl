@@ -14,7 +14,7 @@
 
     γ ~ GammaShapeRate(priors[:aγ],  priors[:bγ]) where {q=MeanField()}
     θ ~ MvNormalMeanPrecision(priors[:mθ], priors[:vθ]) where {q=MeanField()}
-    x0 ~ MvNormalMeanPrecision(zeros(order), Matrix{Float64}(I, order, order)) where {q=MeanField()}
+    x0 ~ MvNormalMeanPrecision(zeros(order), diageye(order)) where {q=MeanField()}
 
     x_prev = x0
 
@@ -56,10 +56,10 @@ function lar_inference(data, order, niter, τ; priors=Dict(), marginals=Dict())
     fesub = subscribe!(score(Float64, BetheFreeEnergy(), model), (f) -> push!(fe, f))
 
     setmarginal!(γ, GammaShapeRate(marginals[:aγ], marginals[:bγ]))
-    setmarginal!(θ, MvNormalMeanPrecision(marginals[:mθ], Matrix{Float64}(I, order, order)))
+    setmarginal!(θ, MvNormalMeanPrecision(marginals[:mθ], diageye(order)))
 
     for i in 1:n
-        setmarginal!(ar_nodes[i], :y_x, MvNormalMeanPrecision(zeros(2*order), Matrix{Float64}(I, 2*order, 2*order)))
+        setmarginal!(ar_nodes[i], :y_x, MvNormalMeanPrecision(zeros(2*order), diageye(2*order)))
     end
     for i in 1:niter
         update!(y, data)
@@ -99,8 +99,8 @@ end
     y = datavar(Float64, n)
 
     γ ~ GammaShapeRate(0.00001, 1.0) where {q=MeanField()}
-    θ ~ MvNormalMeanPrecision(randn(order), Matrix{Float64}(I, order, order)) where {q=MeanField()}
-    x0 ~ MvNormalMeanPrecision(100.0 * ones(order), Matrix{Float64}(I, order, order)) where {q=MeanField()}
+    θ ~ MvNormalMeanPrecision(randn(order), diageye(order)) where {q=MeanField()}
+    x0 ~ MvNormalMeanPrecision(100.0 * ones(order), diageye(order)) where {q=MeanField()}
     τ ~ GammaShapeRate(1.0, 1.0) where {q=MeanField()}
 
     x_prev = x0
@@ -140,10 +140,10 @@ function lar_inference_ex(data, order, niter)
 
     setmarginal!(γ, GammaShapeRate(1.0, 1.0))
     setmarginal!(τ, GammaShapeRate(1.0, 1.0))
-    setmarginal!(θ, MvNormalMeanPrecision(zeros(order), Matrix{Float64}(I, order, order)))
+    setmarginal!(θ, MvNormalMeanPrecision(zeros(order), diageye(order)))
 
     for i in 1:n
-        setmarginal!(ar_nodes[i], :y_x, MvNormalMeanPrecision(100.0 * ones(2*order), Matrix{Float64}(I, 2*order, 2*order)))
+        setmarginal!(ar_nodes[i], :y_x, MvNormalMeanPrecision(100.0 * ones(2*order), diageye(2*order)))
     end
 
     for i in 1:niter
