@@ -1,12 +1,12 @@
 export prior_to_priors
-export get_frames, get_signal
+export get_frames, get_signal, signal_alignment
 export ar_ssm
 
 
 # coupled AR model is deisgned to work with time-varying priors for both speech and environmental noise
 # prior_to_priors map "static" priors to the corresponding matrices with equal elements
-function prior_to_priors(mη, vη, τ, totseg)
-    ar_order = size(mη, 2)
+function prior_to_priors(mη, vη, τ, totseg, ar_order)
+    # ar_order = size(mη, 2)
     rmη = zeros(totseg, ar_order)
     rvη = zeros(totseg, ar_order, ar_order)
     for segnum in 1:totseg
