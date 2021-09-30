@@ -5,6 +5,7 @@ using GraphPPL
 using ReactiveMP
 using Distributions
 using LinearAlgebra
+using Parameters
 import ProgressMeter
 
 include("environment/environment.jl")
