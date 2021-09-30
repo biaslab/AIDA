@@ -1,40 +1,37 @@
 # Auxilary model to infer stationary noise variance
-@model function gaussian_model(n, τ)
+@model [default_factorisation = MeanField()] function gaussian_model(n, aτ, bτ)
 
     y = datavar(Float64, n)
 
-    γ   ~ GammaShapeRate(1.0, 1.0) where {q=MeanField()}
-    x_0 ~ NormalMeanPrecision(0.0, 1.0) where {q=MeanField()}
-    x   ~ NormalMeanPrecision(x_0, γ) where {q=MeanField()}
+    x   ~ NormalMeanPrecision(0.0, 1.0)
+    τ   ~ GammaShapeRate(aτ, bτ)
 
     for i in 1:n
-        y[i] ~ NormalMeanPrecision(x, τ) where {q=MeanField()}
+        y[i] ~ NormalMeanPrecision(x, τ)
     end
 
-    return y, x, γ
+    return y, x, τ
 end
+
 # Gaussian inference
-function inference_gaussian(outputs, niter, τ)
+function inference_gaussian(outputs, niter; priors=Dict(:aτ => 1e-4, :bτ => 1.0))
     n = length(outputs)
-    model, (y, x, γ) = gaussian_model(n, τ, options = (limit_stack_depth = 500, ))
-    γ_buffer = nothing
+    @unpack aτ, bτ = priors
+    model, (y, x, τ) = gaussian_model(n, aτ, bτ, options = (limit_stack_depth = 500, ))
+    τ_buffer = nothing
     x_buffer = nothing
     fe = Vector{Float64}()
 
-    γsub = subscribe!(getmarginal(γ), (my) -> γ_buffer = my)
-    xsub = subscribe!(getmarginal(x), (mx) -> x_buffer = mx)
-    fesub = subscribe!(score(Float64, BetheFreeEnergy(), model), (f) -> push!(fe, f))
+    subscribe!(getmarginal(τ), (mτ) -> τ_buffer = mτ)
+    subscribe!(getmarginal(x), (mx) -> x_buffer = mx)
+    subscribe!(score(Float64, BetheFreeEnergy(), model), (f) -> push!(fe, f))
 
-    setmarginal!(γ, GammaShapeRate(1.0, 1.0))
+    setmarginal!(τ, GammaShapeRate(1.0, 1.0))
     setmarginal!(x, NormalMeanPrecision(0.0, 1.0))
 
-    for i in 1:niter
+    for _ in 1:niter
         update!(y, outputs)
     end
 
-    unsubscribe!(γsub)
-    unsubscribe!(xsub)
-    unsubscribe!(fesub)
-
-    return x_buffer, γ_buffer, fe
+    return x_buffer, τ_buffer, fe
 end

@@ -1,12 +1,20 @@
 # classical latent AR model
+
+function fill_dict(dists::Dict, ar_order)
+    dists_ = Dict{Symbol, Any}(:mθ => zeros(ar_order), 
+                               :vθ => Matrix{Float64}(I, ar_order, ar_order), 
+                               :aγ => 1.0, :bγ => 1e-4, 
+                               :aτ => 1.0, :bτ => 1.0)
+    for key in keys(dists)
+        dists_[key] = dists[key]
+    end
+
+    return dists_
+end
+
 @model function lar_model(n, order, artype, c, τ, priors)
 
-    if isempty(priors)
-        priors[:mθ] = randn(order)
-        priors[:vθ] = Matrix{Float64}(I, order, order)
-        priors[:aγ] = 1.0
-        priors[:bγ] = 1e-4
-    end
+    priors = fill_dict(priors, order)
     
     x = randomvar(n)
     y = datavar(Float64, n)
@@ -23,7 +31,7 @@
     for i in 1:n
         ar_nodes[i], x[i] ~ AR(x_prev, θ, γ) where { q = q(y, x)q(γ)q(θ), meta = ARMeta(artype, order, ARsafe()) }
 
-        y[i] ~ NormalMeanVariance(dot(ct, x[i]), τ)
+        y[i] ~ NormalMeanPrecision(dot(ct, x[i]), τ)
 
         x_prev = x[i]
     end
@@ -31,29 +39,26 @@
     return y, x, θ, γ, ar_nodes
 end
 
-function lar_inference(data, order, niter, τ; priors=Dict(), marginals=Dict())
+function lar_inference(data, niter, τ; priors=Dict(), marginals=Dict())
     n = length(data)
     artype = Multivariate
+    haskey(priors, :order) || error(":order key must be specified in priors dict")
+    order = priors[:order]
     c = zeros(order); c[1] = 1.0
     model, (y, x, θ, γ, ar_nodes) = lar_model(n, order, artype, c, τ, priors)
 
     
-    if isempty(marginals)
-        marginals[:mθ] = zeros(order)
-        marginals[:vθ] = Matrix{Float64}(I, order, order)
-        marginals[:aγ] = 1.0
-        marginals[:bγ] = 1e-4
-    end
+    marginals = fill_dict(marginals, order)
     
     γ_buffer = nothing
     θ_buffer = nothing
     x_buffer = Vector{Marginal}(undef, n)
     fe = Vector{Float64}()
 
-    γsub = subscribe!(getmarginal(γ), (mγ) -> γ_buffer = mγ)
-    θsub = subscribe!(getmarginal(θ), (mθ) -> θ_buffer = mθ)
-    xsub = subscribe!(getmarginals(x), (mx) -> copyto!(x_buffer, mx))
-    fesub = subscribe!(score(Float64, BetheFreeEnergy(), model), (f) -> push!(fe, f))
+    subscribe!(getmarginal(γ), (mγ) -> γ_buffer = mγ)
+    subscribe!(getmarginal(θ), (mθ) -> θ_buffer = mθ)
+    subscribe!(getmarginals(x), (mx) -> copyto!(x_buffer, mx))
+    subscribe!(score(Float64, BetheFreeEnergy(), model), (f) -> push!(fe, f))
 
     setmarginal!(γ, GammaShapeRate(marginals[:aγ], marginals[:bγ]))
     setmarginal!(θ, MvNormalMeanPrecision(marginals[:mθ], diageye(order)))
@@ -68,9 +73,11 @@ function lar_inference(data, order, niter, τ; priors=Dict(), marginals=Dict())
 end
 
 # to optimize
-function lar_batch_learning(segments, ar_order, vmp_its, τ)
+function lar_batch_learning(segments, vmp_its, τ, priors=Dict(), marginals=Dict())
     totseg = size(segments, 1)
     l      = size(segments, 2)
+    haskey(priors, :order) || error(":order key must be specified in priors dict")
+    ar_order = priors[:order]
     
     rmx = zeros(totseg, l)
     rvx = zeros(totseg, l)
@@ -80,7 +87,7 @@ function lar_batch_learning(segments, ar_order, vmp_its, τ)
     fe  = zeros(totseg, vmp_its)
     
     ProgressMeter.@showprogress for segnum in 1:totseg
-        γ, θ, xs, fe[segnum, :] = lar_inference(segments[segnum, :], ar_order, vmp_its, τ)
+        γ, θ, xs, fe[segnum, :] = lar_inference(segments[segnum, :], vmp_its, τ, priors=priors, marginals=marginals)
 
         mx, vx                            = mean.(xs), cov.(xs)
         mθ, vθ                            = mean(θ), cov(θ)
@@ -88,24 +95,33 @@ function lar_batch_learning(segments, ar_order, vmp_its, τ)
         rmθ[segnum, :], rvθ[segnum, :, :] = mθ, vθ
         rγ[segnum]                        = shape(γ), rate(γ)
     end
-    rmx, rvx, rmθ, rvθ, rγ
+    rmx, rvx, rmθ, rvθ, rγ, fe
 end
 
 
 # LAR unknown meaasurement noise
-@model function lar_model_ex(n, order, artype, c)
+@model function lar_model_ex(n, order, artype, c, priors)
+    
+    priors = fill_dict(priors, order)
 
     x = randomvar(n)
     y = datavar(Float64, n)
+    ct  = constvar(c)
 
-    γ ~ GammaShapeRate(0.00001, 1.0) where {q=MeanField()}
-    θ ~ MvNormalMeanPrecision(randn(order), diageye(order)) where {q=MeanField()}
-    x0 ~ MvNormalMeanPrecision(100.0 * ones(order), diageye(order)) where {q=MeanField()}
-    τ ~ GammaShapeRate(1.0, 1.0) where {q=MeanField()}
+    γ ~ GammaShapeRate(priors[:aγ],  priors[:bγ]) where {q=MeanField()}
+    θ ~ MvNormalMeanPrecision(priors[:mθ], priors[:vθ]) where {q=MeanField()}
+    
+    x0 ~ MvNormalMeanPrecision(zeros(order), diageye(order)) where {q=MeanField()}
+
+    τ = if haskey(priors, :aτ) && haskey(priors, :bτ) && !haskey(priors, :τ)
+        τ_tmp = randomvar()
+        τ_tmp ~ GammaShapeRate(priors[:aτ], priors[:bτ]) where {q=MeanField()}
+        τ_tmp
+    else
+        priors[:τ]
+    end
 
     x_prev = x0
-
-    ct  = constvar(c)
 
     ar_nodes = Vector{FactorNode}(undef, n)
 
@@ -117,14 +133,17 @@ end
         x_prev = x[i]
     end
 
-    return x, y, θ, γ, τ, ar_nodes
+    return y, x, θ, γ, τ, ar_nodes
 end
 
-function lar_inference_ex(data, order, niter)
+function lar_inference_ex(data, niter; priors=Dict(), marginals=Dict())
     n = length(data)
     artype = Multivariate
+    order = priors[:order]
+    haskey(priors, :order) || error(":order key must be specified in priors dict")
     c = zeros(order); c[1] = 1.0
-    model, (x, y, θ, γ, τ, ar_nodes) = lar_model_ex(n, order, artype, c)
+    model, (y, x, θ, γ, τ, ar_nodes) = lar_model_ex(n, order, artype, c, priors)
+    marginals = fill_dict(marginals, order)
 
     γ_buffer = nothing
     τ_buffer = nothing
@@ -132,29 +151,51 @@ function lar_inference_ex(data, order, niter)
     x_buffer = Vector{Marginal}(undef, n)
     fe = Vector{Float64}()
 
-    γsub = subscribe!(getmarginal(γ), (mγ) -> γ_buffer = mγ)
-    τsub = subscribe!(getmarginal(τ), (mτ) -> τ_buffer = mτ)
-    θsub = subscribe!(getmarginal(θ), (mθ) -> θ_buffer = mθ)
-    xsub = subscribe!(getmarginals(x), (mx) -> copyto!(x_buffer, mx))
-    fesub = subscribe!(score(Float64, BetheFreeEnergy(), model), (f) -> push!(fe, f))
+    if haskey(priors, :aτ) && haskey(priors, :bτ) && !haskey(priors, :τ)
+        subscribe!(getmarginal(τ), (mτ) -> τ_buffer = mτ)
+        setmarginal!(τ, GammaShapeRate(marginals[:aτ], marginals[:bτ]))
+    end
+    subscribe!(getmarginal(γ), (mγ) -> γ_buffer = mγ)
+    subscribe!(getmarginal(θ), (mθ) -> θ_buffer = mθ)
+    subscribe!(getmarginals(x), (mx) -> copyto!(x_buffer, mx))
+    subscribe!(score(Float64, BetheFreeEnergy(), model), (f) -> push!(fe, f))
 
-    setmarginal!(γ, GammaShapeRate(1.0, 1.0))
-    setmarginal!(τ, GammaShapeRate(1.0, 1.0))
-    setmarginal!(θ, MvNormalMeanPrecision(zeros(order), diageye(order)))
+    setmarginal!(γ, GammaShapeRate(marginals[:aγ], marginals[:bγ]))
+    setmarginal!(θ, MvNormalMeanPrecision(marginals[:mθ], marginals[:vθ]))
 
     for i in 1:n
-        setmarginal!(ar_nodes[i], :y_x, MvNormalMeanPrecision(100.0 * ones(2*order), diageye(2*order)))
+        setmarginal!(ar_nodes[i], :y_x, MvNormalMeanPrecision(ones(2*order), diageye(2*order)))
     end
 
     for i in 1:niter
         update!(y, data)
     end
 
-    unsubscribe!(γsub)
-    unsubscribe!(τsub)
-    unsubscribe!(θsub)
-    unsubscribe!(xsub)
-    unsubscribe!(fesub)
-
     return γ_buffer, τ_buffer, θ_buffer, x_buffer, fe
+end
+
+# to optimize
+function lar_batch_learning_ex(segments, vmp_its, priors::Dict, marginals=Dict())
+    haskey(priors, :order) || error(":order key must be specified in priors dict")
+    ar_order = priors[:order]
+    totseg = size(segments, 1)
+    l      = size(segments, 2)
+    rmx = zeros(totseg, l)
+    rvx = zeros(totseg, l)
+    rmθ = zeros(totseg, ar_order)
+    rvθ = zeros(totseg, ar_order, ar_order)
+    rγ = fill(tuple(.0, .0), totseg)
+    rτ = fill(tuple(.0, .0), totseg)
+    fe  = zeros(totseg, vmp_its)
+    
+    ProgressMeter.@showprogress for segnum in 1:totseg
+        γ, τ, θ, xs, fe[segnum, :] = lar_inference_ex(segments[segnum, :], vmp_its, priors=priors, marginals=marginals)
+        mx, vx                            = mean.(xs), cov.(xs)
+        mθ, vθ                            = mean(θ), cov(θ)
+        rmx[segnum, :], rvx[segnum, :]    = first.(mx), first.(vx)
+        rmθ[segnum, :], rvθ[segnum, :, :] = mθ, vθ
+        rγ[segnum]                        = shape(γ), rate(γ)
+        rτ[segnum]                        = haskey(priors, :aτ) ? (shape(τ), rate(τ)) : (.0, .0);
+    end
+    rmx, rvx, rmθ, rvθ, rγ, !haskey(priors, :τ) ? rτ : nothing
 end
