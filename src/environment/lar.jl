@@ -12,95 +12,8 @@ function fill_dict(dists::Dict, ar_order)
     return dists_
 end
 
-@model function lar_model(n, order, artype, c, τ, priors)
-
-    priors = fill_dict(priors, order)
-    
-    x = randomvar(n)
-    y = datavar(Float64, n)
-    ct  = constvar(c)
-
-    γ ~ GammaShapeRate(priors[:aγ],  priors[:bγ]) where {q=MeanField()}
-    θ ~ MvNormalMeanPrecision(priors[:mθ], priors[:vθ]) where {q=MeanField()}
-    x0 ~ MvNormalMeanPrecision(zeros(order), diageye(order)) where {q=MeanField()}
-
-    x_prev = x0
-
-    ar_nodes = Vector{FactorNode}(undef, n)
-
-    for i in 1:n
-        ar_nodes[i], x[i] ~ AR(x_prev, θ, γ) where { q = q(y, x)q(γ)q(θ), meta = ARMeta(artype, order, ARsafe()) }
-
-        y[i] ~ NormalMeanPrecision(dot(ct, x[i]), τ)
-
-        x_prev = x[i]
-    end
-
-    return y, x, θ, γ, ar_nodes
-end
-
-function lar_inference(data, niter, τ; priors=Dict(), marginals=Dict())
-    n = length(data)
-    artype = Multivariate
-    haskey(priors, :order) || error(":order key must be specified in priors dict")
-    order = priors[:order]
-    c = zeros(order); c[1] = 1.0
-    model, (y, x, θ, γ, ar_nodes) = lar_model(n, order, artype, c, τ, priors)
-
-    
-    marginals = fill_dict(marginals, order)
-    
-    γ_buffer = nothing
-    θ_buffer = nothing
-    x_buffer = Vector{Marginal}(undef, n)
-    fe = Vector{Float64}()
-
-    subscribe!(getmarginal(γ), (mγ) -> γ_buffer = mγ)
-    subscribe!(getmarginal(θ), (mθ) -> θ_buffer = mθ)
-    subscribe!(getmarginals(x), (mx) -> copyto!(x_buffer, mx))
-    subscribe!(score(Float64, BetheFreeEnergy(), model), (f) -> push!(fe, f))
-
-    setmarginal!(γ, GammaShapeRate(marginals[:aγ], marginals[:bγ]))
-    setmarginal!(θ, MvNormalMeanPrecision(marginals[:mθ], diageye(order)))
-
-    for i in 1:n
-        setmarginal!(ar_nodes[i], :y_x, MvNormalMeanPrecision(zeros(2*order), diageye(2*order)))
-    end
-    for i in 1:niter
-        update!(y, data)
-    end
-    return γ_buffer, θ_buffer, x_buffer, fe
-end
-
-# to optimize
-function lar_batch_learning(segments, vmp_its, τ, priors=Dict(), marginals=Dict())
-    totseg = size(segments, 1)
-    l      = size(segments, 2)
-    haskey(priors, :order) || error(":order key must be specified in priors dict")
-    ar_order = priors[:order]
-    
-    rmx = zeros(totseg, l)
-    rvx = zeros(totseg, l)
-    rmθ = zeros(totseg, ar_order)
-    rvθ = zeros(totseg, ar_order, ar_order)
-    rγ = fill(tuple(.0, .0), totseg)
-    fe  = zeros(totseg, vmp_its)
-    
-    ProgressMeter.@showprogress for segnum in 1:totseg
-        γ, θ, xs, fe[segnum, :] = lar_inference(segments[segnum, :], vmp_its, τ, priors=priors, marginals=marginals)
-
-        mx, vx                            = mean.(xs), cov.(xs)
-        mθ, vθ                            = mean(θ), cov(θ)
-        rmx[segnum, :], rvx[segnum, :]    = first.(mx), first.(vx)
-        rmθ[segnum, :], rvθ[segnum, :, :] = mθ, vθ
-        rγ[segnum]                        = shape(γ), rate(γ)
-    end
-    rmx, rvx, rmθ, rvθ, rγ, fe
-end
-
-
 # LAR unknown meaasurement noise
-@model function lar_model_ex(n, order, artype, c, priors)
+@model function lar_model(n, order, artype, c, priors)
     
     priors = fill_dict(priors, order)
 
@@ -136,13 +49,13 @@ end
     return y, x, θ, γ, τ, ar_nodes
 end
 
-function lar_inference_ex(data, niter; priors=Dict(), marginals=Dict())
+function lar_inference(data, niter; priors=Dict(), marginals=Dict())
     n = length(data)
     artype = Multivariate
     order = priors[:order]
     haskey(priors, :order) || error(":order key must be specified in priors dict")
     c = zeros(order); c[1] = 1.0
-    model, (y, x, θ, γ, τ, ar_nodes) = lar_model_ex(n, order, artype, c, priors)
+    model, (y, x, θ, γ, τ, ar_nodes) = lar_model(n, order, artype, c, priors)
     marginals = fill_dict(marginals, order)
 
     γ_buffer = nothing
@@ -175,7 +88,7 @@ function lar_inference_ex(data, niter; priors=Dict(), marginals=Dict())
 end
 
 # to optimize
-function lar_batch_learning_ex(segments, vmp_its, priors::Dict, marginals=Dict())
+function lar_batch_learning(segments, vmp_its, priors::Dict, marginals=Dict())
     haskey(priors, :order) || error(":order key must be specified in priors dict")
     ar_order = priors[:order]
     totseg = size(segments, 1)
@@ -189,7 +102,7 @@ function lar_batch_learning_ex(segments, vmp_its, priors::Dict, marginals=Dict()
     fe  = zeros(totseg, vmp_its)
     
     ProgressMeter.@showprogress for segnum in 1:totseg
-        γ, τ, θ, xs, fe[segnum, :] = lar_inference_ex(segments[segnum, :], vmp_its, priors=priors, marginals=marginals)
+        γ, τ, θ, xs, fe[segnum, :] = lar_inference(segments[segnum, :], vmp_its, priors=priors, marginals=marginals)
         mx, vx                            = mean.(xs), cov.(xs)
         mθ, vθ                            = mean(θ), cov(θ)
         rmx[segnum, :], rvx[segnum, :]    = first.(mx), first.(vx)
