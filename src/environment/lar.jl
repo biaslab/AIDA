@@ -15,8 +15,6 @@ end
 # LAR unknown meaasurement noise
 @model function lar_model(n, order, artype, c, priors)
     
-    priors = fill_dict(priors, order)
-
     x = randomvar(n)
     y = datavar(Float64, n)
     ct  = constvar(c)
@@ -55,6 +53,7 @@ function lar_inference(data, niter; priors=Dict(), marginals=Dict())
     order = priors[:order]
     haskey(priors, :order) || error(":order key must be specified in priors dict")
     c = zeros(order); c[1] = 1.0
+    priors = fill_dict(priors, order)
     model, (y, x, θ, γ, τ, ar_nodes) = lar_model(n, order, artype, c, priors)
     marginals = fill_dict(marginals, order)
 
