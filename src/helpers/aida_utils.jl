@@ -1,7 +1,7 @@
 export prior_to_priors
 export get_frames, get_signal, signal_alignment
 export ar_ssm
-
+export get_learning_data
 
 # coupled AR model is deisgned to work with time-varying priors for both speech and environmental noise
 # prior_to_priors map "static" priors to the corresponding matrices with equal elements
@@ -67,4 +67,18 @@ function ar_ssm(series, order)
         push!(outputs, x)
     end
     return inputs, outputs
+end
+
+function get_learning_data(preferences::Dict, context, jitter=1e-3)
+    idx = findall(isequal(context), preferences["contexts"])
+    gains = preferences["gains"]
+    appraisals = preferences["appraisals"]
+    tgains = vcat(hcat(gains...)', hcat(gains...)', hcat(gains...)')
+    tappraisals = vcat(appraisals, appraisals, appraisals)
+    
+    # augmentation of the dataset with copies
+    y = tappraisals
+    X = tgains .+ sqrt(jitter)*randn(size(tgains))
+    
+    return X, y
 end
