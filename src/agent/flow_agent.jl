@@ -1,4 +1,4 @@
-export inference_flow_classifier, inference_flow_planner
+export inference_flow_classifier, inference_flow_planner, model
 
 
 # specify flow model

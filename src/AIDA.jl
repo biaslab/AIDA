@@ -13,5 +13,6 @@ include("agent/flow_agent.jl")
 
 include("helpers/aida_utils.jl")
 include("helpers/aida_snr.jl")
+include("helpers/files.jl")
 
 end
