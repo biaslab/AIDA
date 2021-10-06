@@ -1,3 +1,12 @@
+struct DummyDistribution
+end
+
+Distributions.entropy(dist::DummyDistribution) = ReactiveMP.Infinity(-1)
+
+@marginalrule typeof(+)(:in1_in2) (m_out::PointMass{Float64}, m_in1::NormalMeanVariance{Float64}, m_in2::NormalMeanVariance{Float64}, ) = begin 
+    return DummyDistribution()
+end
+
 struct InitARMessages{M} <: ReactiveMP.AbstractPipelineStage 
     message :: M
 end
@@ -35,27 +44,31 @@ ReactiveMP.apply_pipeline_stage(stage::InitARMessages, factornode, tag, stream) 
 
     ar_1_nodes = Vector{FactorNode}(undef, n)
     ar_2_nodes = Vector{FactorNode}(undef, n)
-
+    
+    pipeline_1 = InitARMessages(MvNormalMeanPrecision(zeros(order_1), Matrix{Float64}(I, order_1, order_1)))
+    pipeline_2 = InitARMessages(MvNormalMeanPrecision(zeros(order_2), Matrix{Float64}(I, order_2, order_2)))
+    
     for i in 1:n
         ar_1_nodes[i], z[i] ~ AR(z_prev, θ, γ) where { 
-            q = q(y, x)q(γ)q(θ), meta = ARMeta(artype, order_1, ARsafe()), 
-            pipeline = InitARMessages(MvNormalMeanPrecision(zeros(order_1), Matrix{Float64}(I, order_1, order_1)))
+            q = q(y, x)q(γ)q(θ), meta = ARMeta(artype, order_1, ARsafe()),
+            pipeline=pipeline_1
         }
         z1[i] ~ dot(ct1, z[i])
         
         ar_2_nodes[i], x[i] ~ AR(x_prev, η, τ) where { 
             q = q(y, x)q(γ)q(θ), meta = ARMeta(artype, order_2, ARsafe()) ,
-            pipeline = InitARMessages(MvNormalMeanPrecision(zeros(order_2), Matrix{Float64}(I, order_2, order_2)))
+            pipeline=pipeline_2
         }
         x1[i] ~ dot(ct2, x[i])
         
-        o[i] ~ NormalMeanVariance(z1[i] + x1[i], 1e-12)
-#         o[i] ~ z1[i] + x1[i]
+#         o[i] ~ NormalMeanVariance(z1[i] + x1[i], 1e-8)
+        o[i] ~ z1[i] + x1[i]
         x_prev = x[i]
         z_prev = z[i]
     end
     
-    scheduler = schedule_updates(z, η, τ, x, θ, γ)
+#     scheduler = schedule_updates(z, η, τ, x, θ, γ)
+    scheduler = nothing
 
     return o, z, z1, θ, γ, x, x1, η, τ, ar_1_nodes, ar_2_nodes, scheduler
 end
@@ -85,8 +98,9 @@ function coupled_inference(data, prior_η, prior_τ, order_1, order_2, niter)
     ηsub = subscribe!(getmarginal(η), (mη) -> η_buffer = mη)
     zsub = subscribe!(getmarginals(z), (mz) -> copyto!(z_buffer, mz))
     
-    fe_scheduler = PendingScheduler()
-    fesub = subscribe!(score(Float64, BetheFreeEnergy(), model, fe_scheduler), (f) -> push!(fe, f))
+#     fe_scheduler = PendingScheduler()
+#     fesub = subscribe!(score(Float64, BetheFreeEnergy(), model, fe_scheduler), (f) -> push!(fe, f))
+    fesub = subscribe!(score(Float64, BetheFreeEnergy(), model), (f) -> push!(fe, f))
     setmarginal!(γ, GammaShapeRate(1e-12, 1e-12))
     setmarginal!(θ, MvNormalMeanPrecision(zeros(order_1), Matrix{Float64}(I, order_1, order_1)))
     
@@ -94,20 +108,23 @@ function coupled_inference(data, prior_η, prior_τ, order_1, order_2, niter)
 #     setmarginal!(η, MvNormalMeanPrecision(prior_η[1], prior_η[2])) # better
     setmarginal!(η, MvNormalMeanPrecision(prior_η[1],  1e4*Matrix{Float64}(I, order_2, order_2)))
 
+    marginal_ar_1 = MvNormalMeanPrecision(zeros(2*order_1), Matrix{Float64}(I, 2*order_1, 2*order_1))
+    marginal_ar_2 = MvNormalMeanPrecision(zeros(2*order_2), Matrix{Float64}(I, 2*order_2, 2*order_2))
+    
     for i in 1:n
 #         setmarginal!(x1[i], NormalMeanPrecision(0.0, 1.0))
 #         setmarginal!(z1[i], NormalMeanPrecision(0.0, 1.0))
-        setmarginal!(ar_1_nodes[i], :y_x, MvNormalMeanPrecision(zeros(2*order_1), Matrix{Float64}(I, 2*order_1, 2*order_1)))
-        setmarginal!(ar_2_nodes[i], :y_x, MvNormalMeanPrecision(zeros(2*order_2), Matrix{Float64}(I, 2*order_2, 2*order_2)))
+        setmarginal!(ar_1_nodes[i], :y_x, marginal_ar_1)
+        setmarginal!(ar_2_nodes[i], :y_x, marginal_ar_2)
     end
     
     for i in 1:niter
         update!(o, data)
         # iffy approach
-        for i in 1:n
-            release!(scheduler)
-        end
-        release!(fe_scheduler)
+#         for i in 1:n
+#             release!(scheduler)
+#         end
+#         release!(fe_scheduler)
     end
     return γ_buffer, θ_buffer, z_buffer, τ_buffer, η_buffer, x_buffer, fe
 end
