@@ -50,7 +50,7 @@ ReactiveMP.apply_pipeline_stage(stage::InitARMessages, factornode, tag, stream) 
         x1[i] ~ dot(ct2, x[i])
         
         o[i] ~ NormalMeanVariance(z1[i] + x1[i], 1e-12)
-
+#         o[i] ~ z1[i] + x1[i]
         x_prev = x[i]
         z_prev = z[i]
     end
