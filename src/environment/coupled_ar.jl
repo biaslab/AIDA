@@ -105,8 +105,8 @@ function coupled_inference(data, prior_η, prior_τ, order_1, order_2, niter)
     setmarginal!(θ, MvNormalMeanPrecision(zeros(order_1), Matrix{Float64}(I, order_1, order_1)))
     
     setmarginal!(τ, GammaShapeRate(prior_τ[1], prior_τ[2]))
-#     setmarginal!(η, MvNormalMeanPrecision(prior_η[1], prior_η[2])) # better
-    setmarginal!(η, MvNormalMeanPrecision(prior_η[1],  1e4*Matrix{Float64}(I, order_2, order_2)))
+    setmarginal!(η, MvNormalMeanPrecision(prior_η[1], prior_η[2])) # better
+    # setmarginal!(η, MvNormalMeanPrecision(prior_η[1],  1e4*Matrix{Float64}(I, order_2, order_2)))
 
     marginal_ar_1 = MvNormalMeanPrecision(zeros(2*order_1), Matrix{Float64}(I, 2*order_1, 2*order_1))
     marginal_ar_2 = MvNormalMeanPrecision(zeros(2*order_2), Matrix{Float64}(I, 2*order_2, 2*order_2))
