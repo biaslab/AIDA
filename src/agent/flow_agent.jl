@@ -1,4 +1,4 @@
-export inference_flow_classifier, inference_flow_planner, model
+export inference_flow_classifier, inference_flow_planner, model, inference_flow_classifier_input
 
 
 # specify flow model
@@ -117,3 +117,74 @@ function inference_flow_planner(m_gains, cov_gains, goal::Float64, params; vmp_i
     return fe_buffer, x_buffer
 
 end
+
+struct PointMassFormConstraint2{P}
+    point :: P   
+end
+
+ReactiveMP.default_form_check_strategy(::PointMassFormConstraint2) = FormConstraintCheckLast()
+
+ReactiveMP.is_point_mass_form_constraint(::PointMassFormConstraint2) = true
+
+function ReactiveMP.constrain_form(pmconstraint::PointMassFormConstraint2, message::Message) 
+    is_clamped = ReactiveMP.is_clamped(message)
+    is_initial = ReactiveMP.is_initial(message)
+    return Message(PointMass(pmconstraint.point), is_clamped, is_initial)
+end
+
+
+@model function flow_classifier_input(input, model, params)
+    
+    # initialize variables
+    x_lat  = randomvar()
+    y_lat1 = randomvar()
+    y_lat2 = randomvar()
+    xprior = randomvar() where { form_constraint = PointMassFormConstraint2(input)}
+    y = datavar(Float64)
+
+    # specify model
+    meta  = FlowMeta(compile(model, params))
+
+    # specify prior on weights
+    xprior ~ MvNormalMeanPrecision([0.5,0.5], 1*diagm(ones(2))) where { q = MeanField() }
+
+    # specify latent state
+    x_lat ~ MvNormalMeanPrecision(xprior, 1e1*diagm(ones(2))) where { q = MeanField() }
+
+    # specify transformed latent value
+    y_lat1 ~ Flow(x_lat) where { meta = meta }
+    y_lat2 ~ dot(y_lat1, [1, 1])
+
+    # specify observations
+    y ~ Probit(y_lat2) # default where { pipeline = RequireInbound(in = NormalMeanPrecision(0, 1.0)) }
+
+    # return variables
+    return x_lat, y_lat1, y_lat2, y
+
+end;
+
+function inference_flow_classifier_input(input, model, params)
+
+    # define model
+    model, (x_lat, y_lat1, y_lat2, y) = flow_classifier_input(input, model, params)
+
+    # initialize free energy
+    fe_buffer = nothing
+    
+    # subscribe
+    fe_sub = subscribe!(score(eltype(input), BetheFreeEnergy(), model), (fe) -> fe_buffer = fe)
+
+    setmarginal!(x_lat, vague(MvNormalMeanPrecision, 2))
+    
+    # update y and x according to observations (i.e. perform inference)
+    for k = 1:10
+        ReactiveMP.update!(y, 1.0)
+    end
+
+    # unsubscribe
+    unsubscribe!(fe_sub)
+    
+    # return the marginal values
+    return fe_buffer
+
+end;
