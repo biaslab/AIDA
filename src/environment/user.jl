@@ -1,6 +1,6 @@
 using Distributions: Bernoulli
 
-function generate_user_response(w::AbstractVector; μ=[0.8, 0.2], a=2, b=1, c=25, d=-0.4)
+function generate_user_response(w::AbstractVector; μ=[0.8, 0.2], a=1, b=1, c=25, d=-0.4)
 
     @assert length(w) == 2 "The user preferences are currently only defined for 2-dimensional gains."
 
@@ -17,6 +17,6 @@ function generate_user_response(w::AbstractVector; μ=[0.8, 0.2], a=2, b=1, c=25
 
     p = 1 ./ (1 + exp.(-c*((f(w)-minz)/(maxz-minz)-0.5+d)))
 
-    return rand(Bernoulli(p))
+    return 1.0*rand(Bernoulli(p))
 
 end
