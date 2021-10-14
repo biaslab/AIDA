@@ -14,10 +14,25 @@ ReactiveMP.apply_pipeline_stage(stage::InitARMessages, factornode, tag::Type{Val
 ReactiveMP.apply_pipeline_stage(stage::InitARMessages, factornode, tag::Type{Val{:y}}, stream) = stream |> start_with(Message(stage.message, false, true))
 ReactiveMP.apply_pipeline_stage(stage::InitARMessages, factornode, tag, stream)                = stream
 
+
+struct PrintFormConstraint <: ReactiveMP.AbstractFormConstraint
+    name :: String
+end
+
+ReactiveMP.default_form_check_strategy(::PrintFormConstraint)   = ReactiveMP.FormConstraintCheckLast()
+
+ReactiveMP.is_point_mass_form_constraint(::PrintFormConstraint) = false
+
+function ReactiveMP.constrain_form(constraint::PrintFormConstraint, something)
+    println(constraint.name, " ", something)
+    return something
+end
+
 # Coupled AR model
 @model function coupled_model(n, prior_η, prior_τ, order_1, order_2, artype, c1, c2)
 
     # z for ar_1
+    # z  = randomvar(n) where {form_constraint=PrintFormConstraint("AR_out")}
     z  = randomvar(n)
     z1 = randomvar(n)
     # x for ar_2
@@ -37,7 +52,8 @@ ReactiveMP.apply_pipeline_stage(stage::InitARMessages, factornode, tag, stream) 
     τ ~ GammaShapeRate(prior_τ[1], prior_τ[2]) where {q=MeanField()}
 #     η ~ MvNormalMeanPrecision(prior_η[1], 1e12*Matrix{Float64}(I, order_2, order_2)) where {q=MeanField()}
     η ~ MvNormalMeanPrecision(prior_η[1], prior_η[2]) where {q=MeanField()}
-    x0 ~ MvNormalMeanPrecision(zeros(order_2), 1e2*Matrix{Float64}(I, order_2, order_2)) where {q=MeanField()}
+    # x0 ~ MvNormalMeanPrecision(zeros(order_2), 1e2*Matrix{Float64}(I, order_2, order_2)) where {q=MeanField()} # speech
+    x0 ~ MvNormalMeanPrecision(zeros(order_2), Matrix{Float64}(I, order_2, order_2)) where {q=MeanField()} # synthetic
 
     z_prev = z0
     x_prev = x0
@@ -101,7 +117,7 @@ function coupled_inference(data, prior_η, prior_τ, order_1, order_2, niter)
 #     fe_scheduler = PendingScheduler()
 #     fesub = subscribe!(score(Float64, BetheFreeEnergy(), model, fe_scheduler), (f) -> push!(fe, f))
     fesub = subscribe!(score(Float64, BetheFreeEnergy(), model), (f) -> push!(fe, f))
-    setmarginal!(γ, GammaShapeRate(1e-12, 1e-12))
+    setmarginal!(γ, GammaShapeRate(1.0, 1.0))
     setmarginal!(θ, MvNormalMeanPrecision(zeros(order_1), Matrix{Float64}(I, order_1, order_1)))
     
     setmarginal!(τ, GammaShapeRate(prior_τ[1], prior_τ[2]))
