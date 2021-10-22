@@ -13,13 +13,13 @@ DistributionsAD = "ced4e74d-a319-5a8a-b0ac-84af2272839c"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 GaussianProcesses = "891a1506-143c-57d2-908e-e1f8e92e6de9"
 GraphPPL = "b3f8163a-e979-4e85-b43e-1f63d8c8b42c"
+JLD = "4138dd39-2aa7-5051-a626-17a0bb65d9c8"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
-<<<<<<< HEAD
 PGFPlots = "3b7a836e-365b-5785-a47d-02c71176b4aa"
-=======
->>>>>>> 65e104d655833efff01697881465ad0af81cc55f
+PGFPlotsX = "8314cec4-20b6-5062-9cdb-752b83310925"
 Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 PolynomialRoots = "3a141323-8675-5d76-9d11-e1df1406c778"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
