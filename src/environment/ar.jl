@@ -30,7 +30,7 @@ function ar_inference(inputs, outputs, order, niter, aγ=1.0, bγ=1.0)
 
     setmarginal!(γ, GammaShapeRate(aγ, bγ))
 
-    for i in 1:niter
+    ProgressMeter.@showprogress for i in 1:niter
         update!(x, inputs)
         update!(y, outputs)
     end
