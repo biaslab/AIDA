@@ -101,7 +101,8 @@ function lar_batch_learning(segments, vmp_its, priors::Dict, marginals=Dict())
     fe  = zeros(totseg, vmp_its)
     
     ProgressMeter.@showprogress for segnum in 1:totseg
-        γ, τ, θ, xs, fe[segnum, :] = lar_inference(segments[segnum, :], vmp_its, priors=priors, marginals=marginals)
+    
+        γ, τ, θ, xs, fe[segnum, :]        = lar_inference(segments[segnum, :], vmp_its, priors=priors, marginals=marginals)
         mx, vx                            = mean.(xs), cov.(xs)
         mθ, vθ                            = mean(θ), cov(θ)
         rmx[segnum, :], rvx[segnum, :]    = first.(mx), first.(vx)
