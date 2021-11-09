@@ -27,6 +27,7 @@ grid = Iterators.product(gridman,gridman)
 efe_grids = []
 epi_grids = []
 inst_grids = []
+idxs = []
 
 T = 80
 let x1 = x1, y1 = y1,current = current, σ = σ, l = l;
@@ -51,6 +52,7 @@ let x1 = x1, y1 = y1,current = current, σ = σ, l = l;
 	append!(efe_grids,value_grid)
 	append!(epi_grids,epi_grid)
 	append!(inst_grids,inst_grid)
+	append!(idxs,idx)
 
 	heatmap(gridman,gridman,value_grid);
 	scatter!([x2[2]],[x2[1]],markersize=10,label="Current"); # This gets flipped for some reason???
@@ -62,8 +64,10 @@ let x1 = x1, y1 = y1,current = current, σ = σ, l = l;
 	    save("efe_grids.jld","efe_grids",efe_grids)
 	    save("epi_grids.jld","epi_grids",epi_grids)
 	    save("inst_grids.jld","inst_grids",inst_grids)
+
 	    save("responses.jld","responses",y1)
 	    save("points.jld","points",x1)
+	    save("idx.jld","idx",x1)
 	end
     end
 
