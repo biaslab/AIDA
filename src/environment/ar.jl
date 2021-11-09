@@ -18,7 +18,7 @@ end
 # AR inference
 function ar_inference(inputs, outputs, order, niter, aγ=1.0, bγ=1.0)
     n = length(outputs)
-    model, (x, y, θ, γ) = ar_model(n, order, aγ, bγ, options = (limit_stack_depth = 500, ))
+    model, (x, y, θ, γ) = ar_model(n, order, aγ, bγ, options = (limit_stack_depth = 100, ))
 
     γ_buffer = nothing
     θ_buffer = nothing
@@ -30,7 +30,7 @@ function ar_inference(inputs, outputs, order, niter, aγ=1.0, bγ=1.0)
 
     setmarginal!(γ, GammaShapeRate(aγ, bγ))
 
-    for i in 1:niter
+    ProgressMeter.@showprogress for i in 1:niter
         update!(x, inputs)
         update!(y, outputs)
     end
