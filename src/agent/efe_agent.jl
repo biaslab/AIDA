@@ -23,22 +23,22 @@ bro = Iterators.product(gridman,gridman)
 current = (0.5,0.5)
 grid = Iterators.product(gridman,gridman)
 
-let x1 = x1, y1 = y1,current = current, σ = σ, l = l
-anim = @animate for t ∈ 1:80
-    print(t, "\n")
-    x2,value_grid = get_new_proposal(grid,x1,y1,current,σ,l)
+let x1 = x1, y1 = y1,current = current, σ = σ, l = l;
+anim = @animate for t ∈ 1:80;
+    #print(t, "\n")
+    x2,value_grid = get_new_proposal(grid,x1,y1,current,σ,l);
 
     # Update current point after testing
-    current = (x2[1],x2[2])
+    current = (x2[1],x2[2]);
 
     # Get some user feedback
-    y1 = vcat(y1,generate_user_response(collect(x2)))
-    x1 = hcat(x1,collect(x2))
+    y1 = vcat(y1,generate_user_response(collect(x2)));
+    x1 = hcat(x1,collect(x2));
 
     # Optimize hyperparams every 5th iteration
     if t % 5 == 0
-        σ,l = optimize_hyperparams(x1,y1,[σ,l])
-	println("new σ: ",σ," new l: ",l)
+        σ,l = optimize_hyperparams(x1,y1,[σ,l]);
+	#println("new σ: ",σ," new l: ",l)
     end
 
     heatmap(gridman,gridman,value_grid);
@@ -47,7 +47,7 @@ anim = @animate for t ∈ 1:80
 end
 
 gif(anim, "test.gif", fps = 2);
-end
+end;
 
 
 
