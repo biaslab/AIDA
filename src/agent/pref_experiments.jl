@@ -28,7 +28,7 @@ efe_grids = []
 epi_grids = []
 inst_grids = []
 
-T = 5
+T = 80
 let x1 = x1, y1 = y1,current = current, σ = σ, l = l;
     #anim = @animate
     for t ∈ 1:T;
