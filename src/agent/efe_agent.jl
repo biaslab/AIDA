@@ -1,3 +1,4 @@
+# Do a run of the pref learning agent and create a gif
 using Pkg;Pkg.activate("../..");Pkg.instantiate()
 using Plots
 using OhMyREPL
@@ -26,8 +27,7 @@ current = (0.5,0.5)
 grid = Iterators.product(gridman,gridman)
 
 let x1 = x1, y1 = y1,current = current, σ = σ, l = l;
-#anim = @animate
-for t ∈ 1:10;
+anim = @animate for t ∈ 1:10;
     print(t, "\n")
     x2,value_grid = get_new_proposal(grid,x1,y1,current,σ,l);
 
@@ -49,7 +49,7 @@ for t ∈ 1:10;
     scatter!([target[2]],[target[1]],markersize=10,label="Target");
 end
 
-#gif(anim, "test.gif", fps = 2);
+gif(anim, "test.gif", fps = 2);
 end;
 
 
