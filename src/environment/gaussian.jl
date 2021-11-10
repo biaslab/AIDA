@@ -14,7 +14,7 @@
 end
 
 # Gaussian inference
-function inference_gaussian(outputs, niter; priors=Dict(:aτ => 1e-4, :bτ => 1.0))
+function gaussian_inference(outputs, niter; priors=Dict(:aτ => 1e-4, :bτ => 1.0))
     n = length(outputs)
     @unpack aτ, bτ = priors
     model, (y, x, τ) = gaussian_model(n, aτ, bτ, options = (limit_stack_depth = 500, ))

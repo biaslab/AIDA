@@ -2,6 +2,7 @@ export prior_to_priors
 export get_frames, get_signal, signal_alignment
 export ar_ssm
 export get_learning_data
+export cat_accuracy
 
 # coupled AR model is deisgned to work with time-varying priors for both speech and environmental noise
 # prior_to_priors map "static" priors to the corresponding matrices with equal elements
@@ -81,4 +82,8 @@ function get_learning_data(preferences::Dict, context, jitter=1e-3)
     X = tgains .+ sqrt(jitter)*randn(size(tgains))
     
     return X, y
+end
+
+function cat_accuracy(y_pred, y_true)
+    return sum(y_pred .== y_true) / length(y_true)
 end

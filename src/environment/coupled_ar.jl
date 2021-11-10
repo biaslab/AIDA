@@ -1,7 +1,7 @@
 struct DummyDistribution
 end
 
-Distributions.entropy(dist::DummyDistribution) = ReactiveMP.Infinity(-1)
+Distributions.entropy(dist::DummyDistribution) = ReactiveMP.InfCountingReal(0.0, -1)
 
 @marginalrule typeof(+)(:in1_in2) (m_out::PointMass{Float64}, m_in1::NormalMeanVariance{Float64}, m_in2::NormalMeanVariance{Float64}, ) = begin 
     return DummyDistribution()

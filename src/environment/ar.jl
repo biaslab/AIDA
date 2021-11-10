@@ -1,11 +1,11 @@
 # "pure" AR model
-@model function ar_model(n, order, aγ, bγ)
+@model function ar_model(n, μθ, Λθ, aγ, bγ)
 
     x = datavar(Vector{Float64}, n)
     y = datavar(Float64, n)
 
     γ ~ GammaShapeRate(aγ, bγ) where {q=MeanField()}
-    θ ~ MvNormalMeanPrecision(zeros(order), Matrix{Float64}(I, order, order)) where {q=MeanField()}
+    θ ~ MvNormalMeanPrecision(μθ, Λθ) where {q=MeanField()}
 
 
     for i in 1:n
@@ -16,9 +16,10 @@
 end
 
 # AR inference
-function ar_inference(inputs, outputs, order, niter, aγ=1.0, bγ=1.0)
+function ar_inference(inputs, outputs, order, niter; priors=Dict(:μθ => zeros(order), :Λθ => diageye(order), :aγ => 1e-4, :bγ => 1.0))
     n = length(outputs)
-    model, (x, y, θ, γ) = ar_model(n, order, aγ, bγ, options = (limit_stack_depth = 100, ))
+    @unpack μθ, Λθ, aγ, bγ = priors
+    model, (x, y, θ, γ) = ar_model(n, μθ, Λθ, aγ, bγ, options = (limit_stack_depth = 100, ))
 
     γ_buffer = nothing
     θ_buffer = nothing
