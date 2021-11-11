@@ -1,8 +1,10 @@
+tmp
+tikz
+
 .ipynb_checkpoints
 .DS_Store
 .vscode
-tmp
-tikz
-.jld
-.wav
-.png
+
+*.jld
+*.wav
+*.png
