@@ -1,52 +1,37 @@
 using Distributions: Bernoulli
+∑(x) = sum(x)
 
-function generate_user_response(w::AbstractVector; μ=[0.8, 0.2], a=1, b=1, c=25, d=-0.4, binary=true)
-
-    @assert length(w) == 2 "The user preferences are currently only defined for 2-dimensional gains."
-
-    f(x) = -sqrt((x[1]-μ[1])^(2)/a + (x[2]-μ[2])^(2)/b)
-
-    z = zeros(10,10)
-    for kx = 1:10
-        for ky = 1:10
-            z[kx, ky] = f([kx/10, ky/10])
-        end
-    end
-
-    maxz, minz = maximum(z), minimum(z)
-
-    p = 1 ./ (1 + exp.(-c*((f(w)-minz)/(maxz-minz)-0.5+d)))
-
-    if binary
-        return 1.0*rand(Bernoulli(p))
-    else
-        return p
-    end
-
-end
-
-# Dispatch on tuples to make plotting the EFE landscape easier
-function generate_user_response(w::Tuple; μ=[0.8, 0.2], a=1, b=1, c=25, d=-0.4, binary=true)
+function generate_user_response(w::Union{Tuple,AbstractVector}; μ=[0.8, 0.2],σ=[.1,.1], β=25.,scale=2., binary=true)
 
     @assert length(w) == 2 "The user preferences are currently only defined for 2-dimensional gains."
 
-    f(x) = -sqrt((x[1]-μ[1])^(2)/a + (x[2]-μ[2])^(2)/b)
+    # Negative squared distance
+    f(x) = -∑(((x .- μ).^2. ./ σ ))
 
-    z = zeros(10,10)
-    for kx = 1:10
-        for ky = 1:10
-            z[kx, ky] = f([kx/10, ky/10])
-        end
-    end
+    # P is proportional to distance from goal, multiplied by a scaling factor
+    # Scaling factor ensures we can get higher than 0.5 when w = μ
+    p(y) = scale / (1 + exp(-β * f(y)))
 
-    maxz, minz = maximum(z), minimum(z)
+    # Compute probability
+    p = p(w)
 
-    p = 1 ./ (1 + exp.(-c*((f(w)-minz)/(maxz-minz)-0.5+d)))
+    # Check that scaling didn't break things
+    @assert p ≤ 1 "p is not correctly normalised. Try a different scaling factor"
 
     if binary
-        return 1.0*rand(Bernoulli(p))
+	return 1.0*rand(Bernoulli(p))
     else
-        return p
+	return p
     end
-
 end
+
+# #use this for visualisation
+#using Plots
+#z = zeros(100,100);
+#for i in 1:100
+#    for j in 1:100
+#	z[i,j] = generate_user_response([i/100,j/100],binary=false)
+#    end
+#end
+#heatmap(z);
+#savefig("user_prefs.png")
