@@ -31,9 +31,8 @@ idxs = []
 
 T = 80
 let x1 = x1, y1 = y1,current = current, σ = σ, l = l;
-    #anim = @animate
     for t ∈ 1:T;
-	#print(t, "\n")
+	print(t, "\n")
 	x2,epi_grid,inst_grid,value_grid,idx = get_new_decomp(grid,x1,y1,current,σ,l);
 
 	# Update current point after testing
@@ -46,13 +45,12 @@ let x1 = x1, y1 = y1,current = current, σ = σ, l = l;
 	# Optimize hyperparams every 5th iteration
 	if t % 5 == 0
 	    σ,l = optimize_hyperparams(x1,y1,[σ,l]);
-	    #println("new σ: ",σ," new l: ",l)
 	end
 
 	append!(efe_grids,value_grid)
 	append!(epi_grids,epi_grid)
 	append!(inst_grids,inst_grid)
-	append!(idxs,idx)
+	#append!(idxs,idx)
 
 	heatmap(gridman,gridman,value_grid);
 	scatter!([x2[2]],[x2[1]],markersize=10,label="Current"); # This gets flipped for some reason???
@@ -67,11 +65,9 @@ let x1 = x1, y1 = y1,current = current, σ = σ, l = l;
 
 	    save("responses.jld","responses",y1)
 	    save("points.jld","points",x1)
-	    save("idx.jld","idx",x1)
+	    #save("idx.jld","idx",x1)
 	end
     end
-
-#gif(anim, "test.gif", fps = 2);
 end;
 
 
