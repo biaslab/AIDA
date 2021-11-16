@@ -119,7 +119,8 @@ function ui(stipple_model)
         vm(stipple_model), class = "container", [
             heading("Active Inference Design Agent")
             Stipple.center([img(src = stipple_model.logourl[], style = "height: 500px; max-width: 700px")]) Stipple.center([col(btn("Next ", @click("index += 1"), color = "pink", type = "submit", wrap = StippleUI.NO_WRAPPER))]) row([
-            cell(class = "st-module",
+            cell(
+            class = "st-module",
             [
             h5("Listen to HA")
             cell(
@@ -133,7 +134,32 @@ function ui(stipple_model)
         )
         ]
         )
-        ]) 
+        ]) row([
+            cell(
+            class = "st-module",
+            [
+            h5("Evaluate") cell(
+            class = "st-module",
+            [
+            btn("", @click("play_in = !play_in"),
+            content = img(src = stipple_model.likeurl[], style = "height: 30; max-width: 30"),
+            type = "submit", wrap = StippleUI.NO_WRAPPER)
+            btn("", @click("play_in = !play_in"),
+            content = img(src = stipple_model.dislikeurl[], style = "height: 30; max-width: 30"),
+            type = "submit", wrap = StippleUI.NO_WRAPPER)
+        ]
+        )
+        ]
+        )
+        ])
+            row([
+                cell(
+                    class = "st-module",
+                    [
+                        h5("Hearing Aid")
+                        StipplePlotly.plot(:ha_data, layout = :ha_layout, config = :config)
+                    ]
+                )])
         ])
 end
 
