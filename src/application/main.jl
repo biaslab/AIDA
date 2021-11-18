@@ -4,32 +4,26 @@ using JLD
 using AIDA
 using Colors
 using Images
+## Initialize agent
 
 include("agent.jl")
+ndims = 2
+agent = EFEAgent(CONTEXTS, 20, ndims, 1)
 
-agent = EFEAgent(CONTEXTS, 20, 2, 1)
+## helper functions
+function get_ha_files(type)
 
-INPUT_PATH = "/Users/apodusenko/Documents/Julia/AIDA/sound/speech/"
-OUTPUT_PATH = "/Users/apodusenko/Documents/Julia/AIDA/sound/separated_jld/speech/"
-# LOGO_PATH = "/Users/apodusenko/Documents/Julia/AIDA/src/application/logo.png"
-# OUTPUT_PATH = "/Users/apodusenko/Documents/Julia/AIDA/sound/AIDA/train/"
-SNR = "5dB"
-CONTEXTS = ["train", "babble"]
-FS = 8000
+    if type == "wav"
+        PATH = INPUT_PATH
+    elseif type == "jld"
+        PATH = OUTPUT_PATH
+    end
 
-function get_ha_intputs()
-    files = map(x -> readdir(INPUT_PATH * x * "/" * SNR * "/", join = true), CONTEXTS)
+    files = map(x -> readdir(PATH * x * "/" * SNR * "/", join = true), CONTEXTS)
     files = collect(Iterators.flatten(files))
-    filter!(x -> contains(x, ".wav"), files)
+    filter!(x -> contains(x, "."*type), files)
 end
 
-function get_ha_outputs()
-    files = map(x -> readdir(OUTPUT_PATH * x * "/" * SNR * "/", join = true), CONTEXTS)
-    files = collect(Iterators.flatten(files))
-    filter!(x -> contains(x, ".jld"), files)
-end
-
-# helper
 function map_input_output(inputs, outputs)
     pairs = []
     for input in inputs
@@ -38,57 +32,26 @@ function map_input_output(inputs, outputs)
                 out_dict = JLD.load(output)
                 push!(pairs, Dict("input" => signal_alignment(wavread(input)[1], FS),
                     "speech" => get_signal(out_dict["rmz"], FS),
-                    "noise" => get_signal(out_dict["rmx"], FS), "output" => get_signal(out_dict["rmz"], FS) + get_signal(out_dict["rmx"], FS)))
+                    "noise" => get_signal(out_dict["rmx"], FS), 
+                    "output" => get_signal(out_dict["rmz"], FS) + get_signal(out_dict["rmx"], FS)))
             end
         end
     end
     return pairs
 end
-
-function plots_ha_io(pair)
-    plt_in = plot(pair["input"], title = "HA input", label = false, size = (400, 300), color = "red")
-    plt_sp = plot(pair["speech"], title = "Speech", label = false, size = (200, 150), color = "magenta")
-    plt_ns = plot(pair["noise"], title = "Noise", label = false, size = (200, 150), color = "pink")
-    plt_out = plot(pair["output"], title = "HA output", label = false, size = (400, 300), color = "green")
-    return plt_in, plt_sp, plt_ns, plt_out
-end
-
-inputs, outputs = get_ha_intputs(), get_ha_outputs()
-ha_pairs = map_input_output(inputs, outputs)
-
+##
 
 #== plot HA ==#
 pl_input(index) = PlotData(y = ha_pairs[index]["input"], plot = StipplePlotly.Charts.PLOT_TYPE_SCATTER, name = "input")
 pl_speech(index) = PlotData(y = ha_pairs[index]["speech"], plot = StipplePlotly.Charts.PLOT_TYPE_SCATTER, name = "speech")
 pl_noise(index) = PlotData(y = ha_pairs[index]["noise"], plot = StipplePlotly.Charts.PLOT_TYPE_SCATTER, name = "noise")
-pl_output(index) = PlotData(y = ha_pairs[index]["output"], plot = StipplePlotly.Charts.PLOT_TYPE_SCATTER, name = "output")
-
-HA_layout = PlotLayout(plot_bgcolor = "white", yaxis = [PlotLayoutAxis(xy = "y", index = 1, ticks = "outside", showline = true, zeroline = false, title = "amplitude")])
-# HA_out_layout = PlotLayout(plot_bgcolor = "white", title = PlotLayoutTitle(text="HA output", font=Font(24)), yaxis=[PlotLayoutAxis(xy = "y", index = 1, ticks = "outside", showline = true, zeroline = false, title="response A")])
-
-#== reactive model ==#
-Base.@kwdef mutable struct Model <: ReactiveModel
-
-    index::R{Integer} = 1
-    play_in::R{Bool} = false
-    play_speech::R{Bool} = false
-    play_noise::R{Bool} = false
-    play_output::R{Bool} = false
-
-    like::R{Bool} = false
-    dislike::R{Bool} = false
-
-    logourl::R{String} = "img/logo.png"
-    dislikeurl::R{String} = "img/dislike.png"
-    likeurl::R{String} = "img/like.png"
-    ha_data::R{Vector{PlotData}} = [pl_input(index), pl_speech(index), pl_noise(index), pl_output(index)]
-    ha_layout::R{PlotLayout} = HA_layout
-
-    config::R{PlotConfig} = PlotConfig()
-
+function pl_output(index)
+    gains = agent.current_gain
+    speech = ha_pairs[index]["speech"]
+    noise = ha_pairs[index]["noise"]
+    PlotData(y = gains[1]*speech + gains[2]*noise, plot = StipplePlotly.Charts.PLOT_TYPE_SCATTER, name = "output")
 end
-
-const stipple_model = Stipple.init(Model())
+##
 
 function mod_index(index, pairs)
     mod1(index, length(pairs))
@@ -98,19 +61,88 @@ function update_plots(i)
     stipple_model.ha_data[] = [pl_input(i), pl_speech(i), pl_noise(i), pl_output(i)]
 end
 
-function playsound(type)
-    wavplay(ha_pairs[mod_index(stipple_model.index[], ha_pairs)][type], FS)
+function update_gains(i, context, response)
+    update_dataset!(agent, context, response)
+    # if response == 1.0
+    #     return
+    # end
+    new_X, _ = get_new_proposal(agent, context)
+    @show new_X
+    agent.current_gain = reshape(collect(new_X), size(agent.current_gain))
+    @show new_X
+    update_plots(i)
 end
 
+function playsound(type)
+    if type == "output"
+        gains  = agent.current_gain
+        speech = ha_pairs[mod_index(stipple_model.index[], ha_pairs)]["speech"]
+        noise  = ha_pairs[mod_index(stipple_model.index[], ha_pairs)]["noise"]
+        wavplay(gains[1]*speech + gains[2]*noise, FS)
+    else
+        wavplay(ha_pairs[mod_index(stipple_model.index[], ha_pairs)][type], FS)
+    end
+end
+
+##
+
+# Meta for audio processing
+INPUT_PATH = "sound/speech/"
+OUTPUT_PATH = "sound/separated_jld/speech/"
+SNR = "5dB"
+CONTEXTS = ["train", "babble"]
+FS = 8000
+
+inputs, outputs = map(x -> get_ha_files(x), ["wav", "jld"])
+ha_pairs = map_input_output(inputs, outputs)
+
+# Create layout for plots
+HA_layout = PlotLayout(plot_bgcolor = "white", yaxis = [PlotLayoutAxis(xy = "y", index = 1, ticks = "outside", showline = true, zeroline = false, title = "amplitude")])
+
+#== reactive model ==#
+Base.@kwdef mutable struct Model <: ReactiveModel
+
+    index::R{Integer} = 1
+
+    context::R{String} = "train"
+
+    play_in::R{Bool} = false
+    play_speech::R{Bool} = false
+    play_noise::R{Bool} = false
+    play_output::R{Bool} = false
+
+    like::R{Bool} = false
+    dislike::R{Bool} = false
+
+    optimize::R{Bool} = false
+
+    logourl::R{String}    = "img/logo.png"
+    dislikeurl::R{String} = "img/dislike.png"
+    likeurl::R{String}    = "img/like.png"
+
+    
+
+    ha_data::R{Vector{PlotData}} = [pl_input(index), pl_speech(index), pl_noise(index), pl_output(index)]
+    ha_layout::R{PlotLayout} = HA_layout
+
+    config::R{PlotConfig} = PlotConfig()
+
+end
+
+const stipple_model = Stipple.init(Model())
+
+
 on(i -> update_plots(mod_index(i, ha_pairs)), stipple_model.index)
+
+on(_ -> optimize_hyperparams!(agent, "train"), stipple_model.optimize)
 
 on(_ -> playsound("input"), stipple_model.play_in)
 on(_ -> playsound("speech"), stipple_model.play_speech)
 on(_ -> playsound("noise"), stipple_model.play_noise)
 on(_ -> playsound("output"), stipple_model.play_output)
 
-on(_ -> optimize_hyperparams(agent.cmems[1].dataset["X"], agent.cmems[1].dataset["Y"], agent.cmems[1].params), stipple_model.like)
-on(_ -> optimize_hyperparams(agent.cmems[1].dataset["X"], agent.cmems[1].dataset["Y"], agent.cmems[1].params), stipple_model.dislike)
+on(_ -> update_gains(mod_index(stipple_model.index[], ha_pairs), "train", 1.0), stipple_model.like)
+on(_ -> update_gains(mod_index(stipple_model.index[], ha_pairs), "train", 0.0), stipple_model.dislike)
 
 #== ui ==#
 
@@ -118,53 +150,38 @@ function ui(stipple_model)
     dashboard(
         vm(stipple_model), class = "container", [
             heading("Active Inference Design Agent")
-            Stipple.center([img(src = stipple_model.logourl[], style = "height: 500px; max-width: 700px")]) Stipple.center([col(btn("Next ", @click("index += 1"), color = "pink", type = "submit", wrap = StippleUI.NO_WRAPPER))]) row([
-            cell(
-            class = "st-module",
-            [
-            h5("Listen to HA")
-            cell(
-            class = "st-module",
-            [
-            btn("input ", @click("play_in = !play_in"), color = "blue", type = "submit", wrap = StippleUI.NO_WRAPPER)
-            btn("speech ", @click("play_speech = !play_speech"), color = "orange", type = "submit", wrap = StippleUI.NO_WRAPPER)
-            btn("noise ", @click("play_noise = !play_noise"), color = "green", type = "submit", wrap = StippleUI.NO_WRAPPER)
-            btn("output ", @click("play_output = !play_output"), color = "red", type = "submit", wrap = StippleUI.NO_WRAPPER)
-        ]
-        )
-        ]
-        )
-        ]) row([
-            cell(
-            class = "st-module",
-            [
-            h5("Evaluate") cell(
-            class = "st-module",
-            [
-            btn("", @click("play_in = !play_in"),
-            content = img(src = stipple_model.likeurl[], style = "height: 30; max-width: 30"),
-            type = "submit", wrap = StippleUI.NO_WRAPPER)
-            btn("", @click("play_in = !play_in"),
-            content = img(src = stipple_model.dislikeurl[], style = "height: 30; max-width: 30"),
-            type = "submit", wrap = StippleUI.NO_WRAPPER)
-        ]
-        )
-        ]
-        )
-        ])
-            row([
-                cell(
-                    class = "st-module",
-                    [
-                        h5("Hearing Aid")
-                        StipplePlotly.plot(:ha_data, layout = :ha_layout, config = :config)
-                    ]
-                )])
+            Stipple.center([img(src = stipple_model.logourl[], style = "height: 500px; max-width: 700px")
+            ]) 
+            toggle("Hello")
+            Stipple.center([btn("Optim", @click("optimize = !optimize"), color = "pink", type = "submit", wrap = StippleUI.NO_WRAPPER)
+                            btn("Next", @click("index += 1"), color = "pink", type = "submit", wrap = StippleUI.NO_WRAPPER)
+            ]) 
+            row([cell(class = "st-module", [
+                h5("Listen to HA")
+                cell(class = "st-module", [
+                    btn("input ", @click("play_in = !play_in"), color = "blue", type = "submit", wrap = StippleUI.NO_WRAPPER)
+                    btn("speech ", @click("play_speech = !play_speech"), color = "orange", type = "submit", wrap = StippleUI.NO_WRAPPER)
+                    btn("noise ", @click("play_noise = !play_noise"), color = "green", type = "submit", wrap = StippleUI.NO_WRAPPER)
+                    btn("output ", @click("play_output = !play_output"), color = "red", type = "submit", wrap = StippleUI.NO_WRAPPER)
+                    ])
+                ])
+            ]) 
+            row([cell(class = "st-module", [
+                h5("Evaluate") 
+                cell(class = "st-module", [
+                    btn("", @click("like = !like"), content = img(src = stipple_model.likeurl[], style = "height: 30; max-width: 30"), type = "submit", wrap = StippleUI.NO_WRAPPER)
+                    btn("", @click("dislike = !dislike"), content = img(src = stipple_model.dislikeurl[], style = "height: 30; max-width: 30"), type = "submit", wrap = StippleUI.NO_WRAPPER)])
+                ])
+            ])
+            row([cell(class = "st-module",[ 
+                h5("Hearing Aid") 
+                StipplePlotly.plot(:ha_data, layout = :ha_layout, config = :config)
+                ])
+            ])
         ])
 end
 
 #== server ==#
-
 route("/") do
     ui(stipple_model) |> html
 end
