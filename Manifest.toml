@@ -977,9 +977,9 @@ uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
 [[Libffi_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "761a393aeccd6aa92ec3515e428c26bf99575b3b"
+git-tree-sha1 = "0b4a5d71f3e5200a7dff793393e09dfc2d874290"
 uuid = "e9f186c6-92d2-5b65-8a66-fee21dc1b490"
-version = "3.2.2+0"
+version = "3.2.2+1"
 
 [[Libgcrypt_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgpg_error_jll", "Pkg"]
@@ -1641,6 +1641,12 @@ deps = ["Genie", "Stipple"]
 git-tree-sha1 = "1bdcaac51cdaa5153e72fe9edbc7469609bcc68e"
 uuid = "ec984513-233d-481d-95b0-a3b58b97af2b"
 version = "0.5.0"
+
+[[StippleUI]]
+deps = ["Colors", "DataFrames", "Dates", "Genie", "Stipple"]
+git-tree-sha1 = "0ace2e9cf429aadc58de26e991c181e2b2d28428"
+uuid = "a3c5d34a-b254-4859-a8fa-b86abb7e84a3"
+version = "0.9.0"
 
 [[StringEncodings]]
 deps = ["Libiconv_jll"]
