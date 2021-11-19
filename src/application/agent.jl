@@ -29,12 +29,8 @@ end
 function optimize_hyperparams!(agent::EFEAgent, context::String)
     id = findall(isequal(context), CONTEXTS)[1]
     X, y, params = agent.cmems[id].dataset["X"], agent.cmems[id].dataset["y"], collect(agent.cmems[id].params)
-    println("WTF1")
     res = optimize(params -> log_evidence(X, y, params), params, show_trace=true)
-    println("WTF2")
     agent.cmems[id].params = tuple(res.minimizer...)
-    println("WTF3")
-
 end
 
 # Grid search over EFE values with inhibition of return, inspired by eye movements

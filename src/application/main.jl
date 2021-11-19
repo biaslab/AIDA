@@ -24,6 +24,13 @@ function get_ha_files(type)
     filter!(x -> contains(x, "."*type), files)
 end
 
+function get_ha_files_sin(PATH)
+
+    files = readdir(PATH, join = true)
+    type = files[1][end-2:end]
+    filter!(x -> contains(x, "."*type), files)
+end
+
 function map_input_output(inputs, outputs)
     pairs = []
     for input in inputs
@@ -39,6 +46,7 @@ function map_input_output(inputs, outputs)
     end
     return pairs
 end
+
 ##
 
 #== plot HA ==#
@@ -89,11 +97,18 @@ end
 # Meta for audio processing
 INPUT_PATH = "sound/speech/"
 OUTPUT_PATH = "sound/separated_jld/speech/"
+
+INPUT_PATH_SIN = "sound/speech/sin"
+OUTPUT_PATH_SIN = "sound/separated_jld/speech/sin"
+
 SNR = "5dB"
 CONTEXTS = ["train", "babble"]
 FS = 8000
 
 inputs, outputs = map(x -> get_ha_files(x), ["wav", "jld"])
+ha_pairs = map_input_output(inputs, outputs)
+
+inputs, outputs = map(x -> get_ha_files_sin(x), [INPUT_PATH_SIN, OUTPUT_PATH_SIN])
 ha_pairs = map_input_output(inputs, outputs)
 
 # Create layout for plots
