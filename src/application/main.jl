@@ -105,11 +105,11 @@ SNR = "5dB"
 CONTEXTS = ["train", "babble"]
 FS = 8000
 
-inputs, outputs = map(x -> get_ha_files(x), ["wav", "jld"])
-ha_pairs = map_input_output(inputs, outputs)
+# inputs, outputs = map(x -> get_ha_files(x), ["wav", "jld"])
+# ha_pairs = map_input_output(inputs, outputs)
 
-inputs, outputs = map(x -> get_ha_files_sin(x), [INPUT_PATH_SIN, OUTPUT_PATH_SIN])
-ha_pairs = map_input_output(inputs, outputs)
+# inputs, outputs = map(x -> get_ha_files_sin(x), [INPUT_PATH_SIN, OUTPUT_PATH_SIN])
+# ha_pairs = map_input_output(inputs, outputs)
 
 # Create layout for plots
 HA_layout = PlotLayout(plot_bgcolor = "white", yaxis = [PlotLayoutAxis(xy = "y", index = 1, ticks = "outside", showline = true, zeroline = false, title = "amplitude")])
@@ -135,9 +135,9 @@ Base.@kwdef mutable struct Model <: ReactiveModel
     dislikeurl::R{String} = "img/dislike.png"
     likeurl::R{String}    = "img/like.png"
 
-    
+    btntoggle::R{String} = "Synthetic"
 
-    ha_data::R{Vector{PlotData}} = [pl_input(index), pl_speech(index), pl_noise(index), pl_output(index)]
+    # ha_data::R{Vector{PlotData}} = [pl_input(index), pl_speech(index), pl_noise(index), pl_output(index)]
     ha_layout::R{PlotLayout} = HA_layout
 
     config::R{PlotConfig} = PlotConfig()
@@ -156,18 +156,29 @@ on(_ -> playsound("speech"), stipple_model.play_speech)
 on(_ -> playsound("noise"), stipple_model.play_noise)
 on(_ -> playsound("output"), stipple_model.play_output)
 
-on(_ -> update_gains(mod_index(stipple_model.index[], ha_pairs), "train", 1.0), stipple_model.like)
-on(_ -> update_gains(mod_index(stipple_model.index[], ha_pairs), "train", 0.0), stipple_model.dislike)
+# on(_ -> update_gains(mod_index(stipple_model.index[], ha_pairs), "train", 1.0), stipple_model.like)
+# on(_ -> update_gains(mod_index(stipple_model.index[], ha_pairs), "train", 0.0), stipple_model.dislike)
+
+
+btn_opt(label::AbstractString, value::AbstractString) = "{label: '$label', value: '$value'}"
+btn_opt(labels::Vector, values::Vector) = "[ $(join( btn_opt.(labels, values), ",\n  ")) ]"
+btn_opt(values::Vector) = btn_opt(values, values)
+
 
 #== ui ==#
-
+params = Dict("hi" => 1)
 function ui(stipple_model)
     dashboard(
         vm(stipple_model), class = "container", [
             heading("Active Inference Design Agent")
             Stipple.center([img(src = stipple_model.logourl[], style = "height: 500px; max-width: 700px")
             ]) 
-            toggle("Hello")
+            Stipple.center(quasar(:btn__toggle, "", 
+                            @bind("btntoggle"),
+                            toggle__color="pink",
+                            :multiple,
+                            options=@data(btn_opt(["Synthetic", "Real"], ["synthtetic", "real"])))
+            )
             Stipple.center([btn("Optim", @click("optimize = !optimize"), color = "pink", type = "submit", wrap = StippleUI.NO_WRAPPER)
                             btn("Next", @click("index += 1"), color = "pink", type = "submit", wrap = StippleUI.NO_WRAPPER)
             ]) 
