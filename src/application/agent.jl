@@ -1,8 +1,6 @@
 # load helper functions
 include("../agent/utils.jl")
 
-CONTEXTS = ["train", "babble"]
-
 mutable struct ContextMemory
     name    :: String
     params  :: Tuple
@@ -12,6 +10,7 @@ end
 mutable struct EFEAgent
     cmems        :: Vector{ContextMemory}
     current_gain :: Matrix{Float64}
+    current_hm   :: Matrix{Float64}
     grid
 
     function EFEAgent(names::Vector{String}, nsteps::T, ndims::T, npoints::T) where T<:Int64
@@ -21,7 +20,7 @@ mutable struct EFEAgent
             push!(cmems, ContextMemory(name, params, Dict("X" => missing, "y" => [])))
         end
         grid = Iterators.product(LinRange(0, 2, nsteps), LinRange(0, 2, nsteps))
-        new(cmems, rand(ndims, npoints), grid)
+        new(cmems, rand(ndims, npoints), 1e2*ones(nsteps, nsteps), grid)
     end
 end
 

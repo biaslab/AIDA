@@ -36,4 +36,4 @@ function HA_sin_output(clean_path, sin_mag=0.05)
     return x, s_, n_
 end
 
-x, s, n = HA_sin_output("sound/speech/clean/sp01.wav")
+# x, s, n = HA_sin_output("sound/speech/clean/sp01.wav")

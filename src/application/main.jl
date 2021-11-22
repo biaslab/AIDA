@@ -4,84 +4,50 @@ using JLD
 using AIDA
 using Colors
 using Images
-## Initialize agent
 
+include("audio.jl")
+
+## Initialize agent
 include("agent.jl")
 ndims = 2
 agent = EFEAgent(CONTEXTS, 20, ndims, 1)
 
-## helper functions
-function get_ha_files(type)
-
-    if type == "wav"
-        PATH = INPUT_PATH
-    elseif type == "jld"
-        PATH = OUTPUT_PATH
-    end
-
-    files = map(x -> readdir(PATH * x * "/" * SNR * "/", join = true), CONTEXTS)
-    files = collect(Iterators.flatten(files))
-    filter!(x -> contains(x, "."*type), files)
-end
-
-function get_ha_files_sin(PATH)
-
-    files = readdir(PATH, join = true)
-    type = files[1][end-2:end]
-    filter!(x -> contains(x, "."*type), files)
-end
-
-function map_input_output(inputs, outputs)
-    pairs = []
-    for input in inputs
-        for output in outputs
-            if split(split(input, "/")[end], ".")[1] == split(split(output, "/")[end], ".")[1]
-                out_dict = JLD.load(output)
-                push!(pairs, Dict("input" => signal_alignment(wavread(input)[1], FS),
-                    "speech" => get_signal(out_dict["rmz"], FS),
-                    "noise" => get_signal(out_dict["rmx"], FS), 
-                    "output" => get_signal(out_dict["rmz"], FS) + get_signal(out_dict["rmx"], FS)))
-            end
-        end
-    end
-    return pairs
-end
-
-##
 
 #== plot HA ==#
-pl_input(index) = PlotData(y = ha_pairs[index]["input"], plot = StipplePlotly.Charts.PLOT_TYPE_SCATTER, name = "input")
-pl_speech(index) = PlotData(y = ha_pairs[index]["speech"], plot = StipplePlotly.Charts.PLOT_TYPE_SCATTER, name = "speech")
-pl_noise(index) = PlotData(y = ha_pairs[index]["noise"], plot = StipplePlotly.Charts.PLOT_TYPE_SCATTER, name = "noise")
-function pl_output(index)
+pl_input(index, ha_pairs) = PlotData(y = ha_pairs[index]["input"], plot = StipplePlotly.Charts.PLOT_TYPE_SCATTER, name = "input")
+pl_speech(index, ha_pairs) = PlotData(y = ha_pairs[index]["speech"], plot = StipplePlotly.Charts.PLOT_TYPE_SCATTER, name = "speech")
+pl_noise(index, ha_pairs) = PlotData(y = ha_pairs[index]["noise"], plot = StipplePlotly.Charts.PLOT_TYPE_SCATTER, name = "noise")
+function pl_output(index, ha_pairs, agent)
     gains = agent.current_gain
     speech = ha_pairs[index]["speech"]
     noise = ha_pairs[index]["noise"]
     PlotData(y = gains[1]*speech + gains[2]*noise, plot = StipplePlotly.Charts.PLOT_TYPE_SCATTER, name = "output")
 end
-##
+
+#== heatmap ==#
+function pl_agent_hm(agent)
+    PlotData(x=agent.grid.iterators[1], y=agent.grid.iterators[2], z=agent.current_hm, plot = StipplePlotly.Charts.PLOT_TYPE_HEATMAP, name="heatmap")
+end
 
 function mod_index(index, pairs)
     mod1(index, length(pairs))
 end
 
-function update_plots(i)
-    stipple_model.ha_data[] = [pl_input(i), pl_speech(i), pl_noise(i), pl_output(i)]
+function update_plots(i, ha_pairs, agent)
+    @show "hi"
+    [pl_input(i, ha_pairs), pl_speech(i, ha_pairs), pl_noise(i, ha_pairs), pl_output(i, ha_pairs, agent)]
 end
 
-function update_gains(i, context, response)
+function update_gains(i, context, response, agent, ha_pairs)
     update_dataset!(agent, context, response)
-    # if response == 1.0
-    #     return
-    # end
-    new_X, _ = get_new_proposal(agent, context)
-    @show new_X
+    new_X, new_grid = get_new_proposal(agent, context)
     agent.current_gain = reshape(collect(new_X), size(agent.current_gain))
+    agent.current_hm = new_grid
     @show new_X
-    update_plots(i)
+    update_plots(i, ha_pairs, agent)
 end
 
-function playsound(type)
+function playsound(type, ha_pairs, agent)
     if type == "output"
         gains  = agent.current_gain
         speech = ha_pairs[mod_index(stipple_model.index[], ha_pairs)]["speech"]
@@ -92,34 +58,34 @@ function playsound(type)
     end
 end
 
+function switch_ha_pairs(synthetic=true)
+    if synthetic
+        inputs, outputs = map(x -> get_ha_files_sin(x), [INPUT_PATH_SIN, OUTPUT_PATH_SIN])
+        ha_pairs = map_input_output(inputs, outputs)
+    else
+        inputs, outputs = map(x -> get_ha_files(x), [INPUT_PATH, OUTPUT_PATH])
+        ha_pairs = map_input_output(inputs, outputs)
+    end
+    return ha_pairs
+end
+
 ##
-
-# Meta for audio processing
-INPUT_PATH = "sound/speech/"
-OUTPUT_PATH = "sound/separated_jld/speech/"
-
-INPUT_PATH_SIN = "sound/speech/sin"
-OUTPUT_PATH_SIN = "sound/separated_jld/speech/sin"
-
-SNR = "5dB"
-CONTEXTS = ["train", "babble"]
-FS = 8000
-
-# inputs, outputs = map(x -> get_ha_files(x), ["wav", "jld"])
-# ha_pairs = map_input_output(inputs, outputs)
-
-# inputs, outputs = map(x -> get_ha_files_sin(x), [INPUT_PATH_SIN, OUTPUT_PATH_SIN])
-# ha_pairs = map_input_output(inputs, outputs)
 
 # Create layout for plots
 HA_layout = PlotLayout(plot_bgcolor = "white", yaxis = [PlotLayoutAxis(xy = "y", index = 1, ticks = "outside", showline = true, zeroline = false, title = "amplitude")])
+HM_layout = PlotLayout(title = PlotLayoutTitle(text="EFE Agent", font=Font(24)), plot_bgcolor="white", width=700, height=700, yaxis = [PlotLayoutAxis(xy = "y", index = 1, ticks = "outside", showline = true, zeroline = false, title = "g2")],
+                                               xaxis = [PlotLayoutAxis(xy = "x", index = 1, ticks = "outside", showline = true, zeroline = false, title = "g1")])
+
+ha_pairs_init = switch_ha_pairs()
 
 #== reactive model ==#
 Base.@kwdef mutable struct Model <: ReactiveModel
 
+    # percentage::R{Float64} = 100.0
+
     index::R{Integer} = 1
 
-    context::R{String} = "train"
+    context::R{String} = "synthetic"
 
     play_in::R{Bool} = false
     play_speech::R{Bool} = false
@@ -135,74 +101,86 @@ Base.@kwdef mutable struct Model <: ReactiveModel
     dislikeurl::R{String} = "img/dislike.png"
     likeurl::R{String}    = "img/like.png"
 
-    btntoggle::R{String} = "Synthetic"
+    btntoggle::R{String} = "synthetic"
 
-    # ha_data::R{Vector{PlotData}} = [pl_input(index), pl_speech(index), pl_noise(index), pl_output(index)]
-    ha_layout::R{PlotLayout} = HA_layout
+    ha_pairs::R{Vector} = ha_pairs_init
 
     config::R{PlotConfig} = PlotConfig()
+
+    ha_plotdata::R{Vector{PlotData}} = [pl_input(index, ha_pairs_init), pl_speech(index, ha_pairs_init), pl_noise(index, ha_pairs_init), pl_output(index, ha_pairs_init, agent)]
+    ha_layout::R{PlotLayout} = HA_layout
+
+    hm_layout::R{PlotLayout} = HM_layout
+    agent_plotdata::R{PlotData} = pl_agent_hm(agent)
 
 end
 
 const stipple_model = Stipple.init(Model())
 
 
-on(i -> update_plots(mod_index(i, ha_pairs)), stipple_model.index)
+on(i -> stipple_model.ha_plotdata[] = update_plots(mod_index(i, stipple_model.ha_pairs[]), stipple_model.ha_pairs[], agent), stipple_model.index)
 
-on(_ -> optimize_hyperparams!(agent, "train"), stipple_model.optimize)
+on(_ -> optimize_hyperparams!(agent, stipple_model.context[]), stipple_model.optimize)
 
-on(_ -> playsound("input"), stipple_model.play_in)
-on(_ -> playsound("speech"), stipple_model.play_speech)
-on(_ -> playsound("noise"), stipple_model.play_noise)
-on(_ -> playsound("output"), stipple_model.play_output)
+on(_ -> playsound("input", stipple_model.ha_pairs[], nothing), stipple_model.play_in)
+on(_ -> playsound("speech", stipple_model.ha_pairs[], nothing), stipple_model.play_speech)
+on(_ -> playsound("noise", stipple_model.ha_pairs[], nothing), stipple_model.play_noise)
+on(_ -> playsound("output", stipple_model.ha_pairs[], agent), stipple_model.play_output)
 
-# on(_ -> update_gains(mod_index(stipple_model.index[], ha_pairs), "train", 1.0), stipple_model.like)
-# on(_ -> update_gains(mod_index(stipple_model.index[], ha_pairs), "train", 0.0), stipple_model.dislike)
+on(_ -> stipple_model.ha_plotdata[] = update_gains(mod_index(stipple_model.index[], stipple_model.ha_pairs[]), stipple_model.context[], 1.0, agent, stipple_model.ha_pairs[]), stipple_model.like)
+on(_ -> stipple_model.ha_plotdata[] = update_gains(mod_index(stipple_model.index[], stipple_model.ha_pairs[]), stipple_model.context[], 0.0, agent, stipple_model.ha_pairs[]), stipple_model.dislike)
 
+on(_ -> stipple_model.agent_plotdata[] = pl_agent_hm(agent), stipple_model.like)
+on(_ -> stipple_model.agent_plotdata[] = pl_agent_hm(agent), stipple_model.dislike)
 
+on(pairs -> stipple_model.ha_plotdata[] = update_plots(mod_index(stipple_model.index[], pairs), pairs, agent), stipple_model.ha_pairs)
+on(i -> stipple_model.ha_pairs[] = switch_ha_pairs(i == "synthetic" ? true : false), stipple_model.btntoggle)
+on(i -> stipple_model.context[] = i == "synthetic" ? "synthetic" : "train", stipple_model.btntoggle)
+
+# creating Toggle
 btn_opt(label::AbstractString, value::AbstractString) = "{label: '$label', value: '$value'}"
 btn_opt(labels::Vector, values::Vector) = "[ $(join( btn_opt.(labels, values), ",\n  ")) ]"
 btn_opt(values::Vector) = btn_opt(values, values)
 
-
 #== ui ==#
-params = Dict("hi" => 1)
+# params = Dict("hi" => 1)
 function ui(stipple_model)
     dashboard(
         vm(stipple_model), class = "container", [
-            heading("Active Inference Design Agent")
-            Stipple.center([img(src = stipple_model.logourl[], style = "height: 500px; max-width: 700px")
-            ]) 
-            Stipple.center(quasar(:btn__toggle, "", 
+            heading("Active Inference Design Agent", text_align="center")
+            row([cell(class = "st-module", [
+                h5("AIDA contoller") 
+                cell(class = "st-module", [
+                    btn("Optim", @click("optimize = !optimize"), color = "pink", type = "submit", wrap = StippleUI.NO_WRAPPER)
+                    btn("Next", @click("index += 1"), color = "pink", type = "submit", wrap = StippleUI.NO_WRAPPER)
+                    quasar(:btn__toggle, "", 
                             @bind("btntoggle"),
-                            toggle__color="pink",
+                            toggle__color="orange",
                             :multiple,
-                            options=@data(btn_opt(["Synthetic", "Real"], ["synthtetic", "real"])))
-            )
-            Stipple.center([btn("Optim", @click("optimize = !optimize"), color = "pink", type = "submit", wrap = StippleUI.NO_WRAPPER)
-                            btn("Next", @click("index += 1"), color = "pink", type = "submit", wrap = StippleUI.NO_WRAPPER)
-            ]) 
-            row([cell(class = "st-module", [
-                h5("Listen to HA")
-                cell(class = "st-module", [
-                    btn("input ", @click("play_in = !play_in"), color = "blue", type = "submit", wrap = StippleUI.NO_WRAPPER)
-                    btn("speech ", @click("play_speech = !play_speech"), color = "orange", type = "submit", wrap = StippleUI.NO_WRAPPER)
-                    btn("noise ", @click("play_noise = !play_noise"), color = "green", type = "submit", wrap = StippleUI.NO_WRAPPER)
-                    btn("output ", @click("play_output = !play_output"), color = "red", type = "submit", wrap = StippleUI.NO_WRAPPER)
-                    ])
-                ])
-            ]) 
-            row([cell(class = "st-module", [
-                h5("Evaluate") 
-                cell(class = "st-module", [
-                    btn("", @click("like = !like"), content = img(src = stipple_model.likeurl[], style = "height: 30; max-width: 30"), type = "submit", wrap = StippleUI.NO_WRAPPER)
-                    btn("", @click("dislike = !dislike"), content = img(src = stipple_model.dislikeurl[], style = "height: 30; max-width: 30"), type = "submit", wrap = StippleUI.NO_WRAPPER)])
+                            options=@data(btn_opt(["Synthetic", "Real"], ["synthetic", "real"])))])
                 ])
             ])
+            # spinner("infinity", size="5em")
             row([cell(class = "st-module",[ 
                 h5("Hearing Aid") 
-                StipplePlotly.plot(:ha_data, layout = :ha_layout, config = :config)
+                StipplePlotly.plot(:ha_plotdata, layout = :ha_layout, config = :config)
                 ])
+            ])
+            Stipple.center([btn("input ", @click("play_in = !play_in"), color = "blue", type = "submit", wrap = StippleUI.NO_WRAPPER)
+                 btn("speech ", @click("play_speech = !play_speech"), color = "orange", type = "submit", wrap = StippleUI.NO_WRAPPER)
+                 btn("noise ", @click("play_noise = !play_noise"), color = "green", type = "submit", wrap = StippleUI.NO_WRAPPER)
+                 btn("output ", @click("play_output = !play_output"), color = "red", type = "submit", wrap = StippleUI.NO_WRAPPER)
+            ])
+            Stipple.center(cell(class = "st-module", [
+                    btn("", @click("like = !like"), content = img(src = stipple_model.likeurl[], style = "height: 50; max-width: 50"), type = "submit", wrap = StippleUI.NO_WRAPPER)
+                    btn("", @click("dislike = !dislike"), content = img(src = stipple_model.dislikeurl[], style = "height: 50; max-width: 50"), type = "submit", wrap = StippleUI.NO_WRAPPER)])
+                    )
+            row([cell(class = "st-module",[ 
+                h5("Agent") 
+                StipplePlotly.plot(:agent_plotdata, layout = :hm_layout, config = :config)
+                ])
+            ])
+            Stipple.center([img(src = stipple_model.logourl[], style = "height: 500px; max-width: 700px")
             ])
         ])
 end
