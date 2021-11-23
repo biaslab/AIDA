@@ -7,22 +7,39 @@ include("plot_utils.jl")
 # These should match the values used for the experiment
 n_steps = 50; T = 80
 
-# Recreate the grid for plotting
+experiment = JLD.load("experiment.jld")
+
+efe_grids = reshape(experiment["efe_grids"],n_steps,n_steps,T)
+epi_grids = reshape(experiment["epi_grids"],n_steps,n_steps,T)
+inst_grids = reshape(experiment["inst_grids"],n_steps,n_steps,T)
+idxs = experiment["idxs"]
+
+function get_grid_vals(grid,idxs)
+    [grid[:,:,t][idxs[t]] for t in 1:size(idxs)[1]]
+end
+
+function make_heatmap(grids,gridman,t)
+    # Pick out the right grid
+    grid = grids[:,:,t]
+    # Remove inhibition of return by setting equal to the max value
+    grid[grid .== Inf] .= maximum(grid[grid .!= Inf])
+
+    heatmap(gridman,gridman,grid)
+end
+
+efe_vals = get_grid_vals(efe_grids,idxs)
+epi_vals = get_grid_vals(epi_grids,idxs)
+inst_vals = get_grid_vals(inst_grids,idxs)
+
+p1 = plot(epi_vals,label="Epistemic Value");
+p2 = plot(inst_vals, label="Instrumental Value");
+plot(p1,p2,layout=(2,1))
+
+
 gridman =LinRange(0,1,n_steps)
-grid = Iterators.product(gridman,gridman)
 
-# Load saved data
-efe_grids = load_grid("efe_grids",n_steps,T);
-epi_grids = load_grid("epi_grids",n_steps,T);
-inst_grids = load_grid("inst_grids",n_steps,T);
-
-# Reconstruct the choices made by the agent
-idxs = [argmin(efe_grids[:,:,i]) for i in 1:T]
-
-# Get the values of queried points for all time steps
-efe_mins = [efe_grids[:,:,i][idxs[i]] for i in 1:T]
-epi_mins = [epi_grids[:,:,i][idxs[i]] for i in 1:T]
-inst_mins = [inst_grids[:,:,i][idxs[i]] for i in 1:T]
+# heatmap
+make_heatmap(efe_grids,gridman,20)
 
 # Get rid of infs for inhibition of return
 efe_means = [mean(efe_grids[:,:,i][isfinite.(efe_grids[:,:,i])]) for i in 1:T]
@@ -30,9 +47,4 @@ epi_means = [mean(epi_grids[:,:,i][isfinite.(epi_grids[:,:,i])]) for i in 1:T]
 inst_means = [mean(inst_grids[:,:,i][isfinite.(inst_grids[:,:,i])]) for i in 1:T]
 
 
-# Plot trajectories, demeaned
-epi_plot = plot(epi_mins - epi_means, label="Epistemic Value");
-inst_plot = plot(inst_mins - inst_means,label="Instrumental Value");
-efe_plot = plot(efe_mins - efe_means,label="EFE")
-plot(epi_plot,inst_plot,efe_plot,layout = (3,1))
 

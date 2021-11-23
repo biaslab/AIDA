@@ -18,7 +18,7 @@ gridman =LinRange(0,1,n_steps)
 
 function make_heatmap(grids,t)
     # Pick out the right grid
-    grid = value_grids[:,:,t]
+    grid = grids[:,:,t]
     # Remove inhibition of return by setting equal to the max value
     grid[grid .== Inf] .= maximum(grid[grid .!= Inf])
 
@@ -26,4 +26,18 @@ function make_heatmap(grids,t)
 end
 
 # Sample
-make_heatmap(value_grids,6)
+#make_heatmap(value_grids,6)
+
+#points = JLD.load("archive/points.jld")["points"]
+#
+#kkk
+#
+#map(isequal, collect.(collect(Iterators.product(gridman,gridman))),[[0,0])
+#    .== [0.,0.]
+#isequal([0.,0.],[0.,0.])
+#?foreach
+#
+#?map
+#isequal(
+#.== points[:,2]
+#
