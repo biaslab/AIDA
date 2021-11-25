@@ -1,12 +1,12 @@
 using Distributions: Bernoulli
 ∑(x) = sum(x)
 
-function generate_user_response(w::Union{Tuple,AbstractVector}; μ=[0.8, 0.2],σ=[.1,.1], β=25.,scale=2., binary=true)
+function generate_user_response(w::Union{Tuple,AbstractVector}; μ = [0.8, 0.2], σ = [0.1, 0.1], β = 25.0, scale = 2.0, binary = true)
 
     @assert length(w) == 2 "The user preferences are currently only defined for 2-dimensional gains."
 
     # Negative squared distance
-    f(x) = -∑(((x .- μ).^2. ./ σ ))
+    f(x) = -∑(((x .- μ) .^ 2.0 ./ σ))
 
     # P is proportional to distance from goal, multiplied by a scaling factor
     # Scaling factor ensures we can get higher than 0.5 when w = μ
@@ -19,9 +19,9 @@ function generate_user_response(w::Union{Tuple,AbstractVector}; μ=[0.8, 0.2],σ
     @assert p ≤ 1 "p is not correctly normalised. Try a different scaling factor"
 
     if binary
-	return 1.0*rand(Bernoulli(p))
+        return 1.0 * rand(Bernoulli(p))
     else
-	return p
+        return p
     end
 end
 

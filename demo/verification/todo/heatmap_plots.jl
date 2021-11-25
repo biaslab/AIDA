@@ -1,7 +1,7 @@
 # Point this to the right dir
-using Pkg;Pkg.activate("../..");Pkg.instantiate()
-using Plots,OhMyREPL, JLD
-using Statistics:mean
+using AIDA
+using Plots, OhMyREPL, JLD
+using Statistics: mean
 
 
 T = 80
@@ -11,18 +11,18 @@ n_steps = 50
 file = "archive/efe_grids.jld"
 var = "efe_grids"
 
-value_grids = reshape(JLD.load(file)[var],n_steps,n_steps,T)
+value_grids = reshape(JLD.load(file)[var], n_steps, n_steps, T)
 
 # Make grid for plotting
-gridman =LinRange(0,1,n_steps)
+gridman = LinRange(0, 1, n_steps)
 
-function make_heatmap(grids,t)
+function make_heatmap(grids, t)
     # Pick out the right grid
-    grid = grids[:,:,t]
+    grid = grids[:, :, t]
     # Remove inhibition of return by setting equal to the max value
-    grid[grid .== Inf] .= maximum(grid[grid .!= Inf])
+    grid[grid.==Inf] .= maximum(grid[grid.!=Inf])
 
-    heatmap(gridman,gridman,grid)
+    heatmap(gridman, gridman, grid)
 end
 
 # Sample

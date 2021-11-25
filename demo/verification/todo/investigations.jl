@@ -1,38 +1,37 @@
-using Pkg;Pkg.activate("../..");Pkg.instantiate()
+using AIDA
 using Plots, OhMyREPL, JLD
-using Statistics:mean,cov
+using Statistics: mean, cov
 
-experiment_1 = JLD.load("batch_experiment.jld")
-experiment_2 = JLD.load("batch_experiment_2.jld")
+experiment_1 = JLD.load("jlds/batch_experiment.jld")
+experiment_2 = JLD.load("jlds/batch_experiment_2.jld")
 # experiment_3 = JLD.load("batch_experiment_3.jld") This round got unlucky....
 
 # Heatmap of positive user appraisals
 responses_1 = experiment_1["responses"]
 responses_2 = experiment_2["responses"]
 #responses_3 = experiment_3["responses"]
-resp = vcat(responses_1,responses_2)#,responses_3)
-heatmap(resp,legend=false,xlabel="Time step",ylabel="Agent number",title="Simulated user responses")
+resp = vcat(responses_1, responses_2)#,responses_3)
+heatmap(resp, legend = false, xlabel = "Time step", ylabel = "Agent number", title = "Simulated user responses")
 
-savefig("response_heatmap.png")
+savefig("tmp/response_heatmap.png")
 # Histogram of first index of positive response
-idxs = [findfirst( isequal(1),resp[i,:]) for i in 1:size(resp)[1]]
+idxs = [findfirst(isequal(1), resp[i, :]) for i = 1:size(resp)[1]]
 idxs[isnothing.(idxs)] .= 82 # If the agent didn't get a thumbsup, set it to after the last trial
-mean(idxs[isnothing.(idxs) .== 0])
-histogram( idxs ,bins= 1:maximum(idxs)+1)
-savefig("response_hishist.png")
+mean(idxs[isnothing.(idxs).==0])
+histogram(idxs, bins = 1:maximum(idxs)+1)
+savefig("tmp/response_hishist.png")
 ;
 
 
 efe_vals_1 = experiment_1["efe_vals"]
 efe_vals_2 = experiment_2["efe_vals"]
 efe_vals_3 = experiment_3["efe_vals"]
-efes = vcat(efe_vals_1,efe_vals_2)#,efe_vals_3)
-plot( mean(efes,dims=1)[:] ,legend=false) ;
+efes = vcat(efe_vals_1, efe_vals_2)#,efe_vals_3)
+plot(mean(efes, dims = 1)[:], legend = false);
 pyplot()
-savefig("avg_efe.png")
+savefig("tmp/avg_efe.png")
 
-mean(efes,dims=1)
-;
+mean(efes, dims = 1);
 
 
 #epi_vals = JLD.load("epi_vals_bak.jld")["epi_vals"];
