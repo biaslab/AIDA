@@ -94,7 +94,7 @@ end
 
 # Optimize hyperparams of SE kernel
 function optimize_hyperparams(x1, y1, θ)
-    params = optimize(θ -> log_evidence(x1, y1, θ), θ)
+    params = Optim.optimize(θ -> log_evidence(x1, y1, θ), θ)
     σ, l = params.minimizer
 end
 
