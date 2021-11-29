@@ -7,13 +7,13 @@ To obtain the datasets please run the following commands.
 ```bash
 cd demo/verification
 
-dvc get https://github.com/biaslab/AIDA-data verification-jlds
+dvc get git@github.com:biaslab/AIDA-data.git verification-jlds
 ```
 You can skip this if you prefer to run the experiments from scratch.
 
 To obtain the dataset for the validation experiments, please run in the project main folder:
 ```
-dvc get https://github.com/biaslab/AIDA-data sound
+dvc get git@github.com:biaslab/AIDA-data.git sound
 ```
 
 ### AIDA folders structure
