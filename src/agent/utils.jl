@@ -15,10 +15,17 @@ H(μ, σ) = (C / √(σ + C^2)) * exp(-0.5 * (μ^2 / (σ + C^2)))
 
 # BALD objective. Sometimes we need to dispatch on tuples
 BALD(μ, σ) = h(ϕ(μ, σ)) - H(μ, σ)
-BALD((μ, σ)) = h(ϕ(μ, σ)) - H(μ, σ)
+#BALD((μ, σ)) = h(ϕ(μ, σ)) - H(μ, σ)
+BALD(θ) = BALD(θ[1][1],θ[2][1])
+
+# Cross entropy
+CE(μ,Σ) = KL(ϕ(μ, Σ), 1 - eps()) + h(ϕ(μ, Σ))
+#CE((μ,Σ)) = KL(ϕ(μ, Σ), 1 - eps()) + h(ϕ(μ, Σ))
+CE(θ) = CE(θ[1][1],θ[2][1])
 
 # KL between Bernoullis. Goal prior has param set to 1 - eps(). eps for stability
 KL(p, q) = p * log(eps() + p / q) + (1 - p) * log(eps() + (1 - p) / (1 - q))
+
 
 # Squared exponential kernel for multivariate inputs. Thanks Hoang!
 function se_kernel(x1, x2, σ, l)
@@ -27,9 +34,9 @@ function se_kernel(x1, x2, σ, l)
 end
 
 # Prediction from GP classifier
-function predict(x1, x2, y1, σ, l)
-    n = size(x1, 2)
-    Σ_11 = se_kernel(x1, x1, σ, l) + I(n) * 1e-6
+function predict(x1, grid_element, y1,Σ_11, σ, l)
+    x2 = collect(grid_element)
+    #n = size(x1, 2)
     Σ_22 = se_kernel(x2, x2, σ, l)
     Σ_12 = se_kernel(x1, x2, σ, l)
 
@@ -84,8 +91,10 @@ function find_μ(Σ, y)
     obj_prev = Inf
     obj_cur = 99999
 
+    cur_iter = 0
+    max_iter = 10
     # Based off of Rasmussen algorithm 3.1
-    while abs(obj_prev - obj_cur > 1e-6)
+    while abs(obj_prev - obj_cur > 1e-6) && cur_iter < max_iter
 	logp,∇_logp,∇∇_logp = ∇_log_prob(y_scaled,μ_test)
 	W_ = Diagonal( -∇∇_logp)
 
@@ -94,8 +103,8 @@ function find_μ(Σ, y)
 	Δ_a = b - sqrt(W_) * (L.U \ ( L.L \ ( sqrt(W_) * Σ * b))) - a
 
         # Linesearch to determine the step size
-	optimal_stepsize = optimize(γ -> objective(a + γ*Δ_a,y_scaled,Σ), 0.0, 2.0, abs_tol = 1e-4, method = Optim.Brent())
-	γ_star = optimal_stepsize.minimizer
+	γ_star = optimize(γ -> objective(a + γ*Δ_a,y_scaled,Σ), 0.0, 2.0, abs_tol = 1e-4, method = Optim.Brent()).minimizer
+	#γ_star = optimal_stepsize.minimizer
 
 	# update the mean
 	a = a + γ_star * Δ_a
@@ -104,6 +113,7 @@ function find_μ(Σ, y)
 	# bookkeeping
 	obj_prev = obj_cur
 	obj_cur = objective(a,y_scaled,Σ)
+	cur_iter += 1
     end
     μ_test
 end
@@ -145,23 +155,76 @@ function log_evidence(x1, y1, θ)
     -ll
 end
 
-function sigmoid(x)
-    1 / (1 + exp(-x))
-end
+#function sigmoid(x)
+#    1 / (1 + exp(-x))
+#end
 
 # Optimize hyperparams of SE kernel
 function optimize_hyperparams(x1, y1, θ)
     # We bound params to ensure the optimization is stable. When the agent only has negative responses
     # available, the optimizer can send parameters to extreme (> 1e19) values.
-    params = optimize(θ -> log_evidence(x1, y1, θ), [0.1,0.1],[1.,1],θ,Fminbox())
+    params = optimize(θ -> log_evidence(x1, y1, θ), [0.1,0.1],[1.,1],θ,Fminbox(),
+		     Optim.Options( iterations=1000, g_tol=1e-4))
+    # Note, we increased tolerance on the solver to run faster.
     σ,l = params.minimizer
 end
+
+
+
+#function instrumental(x1, xc, y1, σ, l)
+#    x2 = collect(xc)
+#    μ_pred, Σ_pred = predict(x1, x2, y1, σ, l)
+#    KL(ϕ(μ_pred[1], Σ_pred[1]), 1 - eps()) + h(ϕ(μ_pred[1], Σ_pred[1]))
+#end
+#
+#function epistemic(x1, xc, y1, σ, l)
+#    x2 = collect(xc)
+#    μ_pred, Σ_pred = predict(x1, x2, y1, σ, l)
+#    -BALD(μ_pred[1], Σ_pred[1])
+#end
+#
+function get_new_decomp(grid, x1, y1, current, σ, l)
+    n = size(x1,2)
+    Σ_11 = se_kernel(x1, x1, σ, l) + I(n) * 1e-6
+    # Compute the EFE grid
+    pred_grid = predict.(Ref(x1), grid, Ref(y1),Ref(Σ_11), σ, l)
+    epi_grid = -BALD.(pred_grid)
+    inst_grid = CE.(pred_grid)
+
+    value_grid = epi_grid + inst_grid
+    # Ensure that we propose a new trial and not the same one twice in a row
+    #value_grid[collect(grid).==[(current[1], current[2])]] .= Inf
+
+    # Find the minimum and try it out
+    #idx = argmin(value_grid)
+    #x2 = collect(grid)[idx]
+    #x2, epi_grid, inst_grid, value_grid, idx
+    epi_grid,inst_grid
+end
+
+#function get_new_pointvalues(grid, x1, y1, current, σ, l)
+#    value_grid = choose_point.(Ref(x1), grid, Ref(y1), σ, l)
+#    # Ensure that we propose a new trial and not the same one twice in a row
+#    value_grid[collect(grid).==[(current[1], current[2])]] .= Inf
+#
+#    # Find the minimum and try it out
+#    idx = argmin(value_grid)
+#
+#    # Return epistemic/instrumental values at optimum
+#    epi = epistemic(x1, collect(grid)[idx], y1, σ, l)
+#    inst = instrumental(x1, collect(grid)[idx], y1, σ, l)
+#
+#    x2 = collect(grid)[idx]
+#    x2, epi, inst
+#end
+
 
 
 # Grid search over EFE values with inhibition of return, inspired by eye movements
 function get_new_proposal(grid, x1, y1, current, σ, l)
     # Compute the EFE grid
-    value_grid = choose_point.(Ref(x1), grid, Ref(y1), σ, l)
+    Σ_11 = se_kernel(x1, x1, σ, l) + I(n) * 1e-6
+    value_grid = choose_point.(Ref(x1), grid, Ref(y1),Ref(Σ_11), σ, l)
     # Ensure that we propose a new trial and not the same one twice in a row
     value_grid[collect(grid).==[(current[1], current[2])]] .= Inf
 
