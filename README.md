@@ -21,7 +21,7 @@ dvc get git@github.com:biaslab/AIDA-data.git sound
 ├─ demo
 │  ├─ validation
 │  └─ verification
-│     ├─ jlds
+│     ├─ verification-jlds
 |     ├─ tmp
 |     ├─ tikz
 ├─ sound
