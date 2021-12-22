@@ -1,9 +1,11 @@
 using LinearAlgebra, Optim
 using Distributions: Bernoulli
 using SpecialFunctions: erf
+using StatsFuns: normcdf
 
 # CDF of 0 mean, 1D Gaussian
-ϕ(μ, σ) = 0.5(1.0 + (erf(μ / (σ * √(2)))))
+# ϕ(μ, σ) = 0.5(1.0 + (erf(μ / (σ * √(2)))))
+ϕ(μ, σ) = normcdf(0.0, σ, μ)
 ϕ(μ) = ϕ(μ,1)
 
 # Binary entropy. Epsilons for stability
@@ -11,7 +13,7 @@ h(p) = -p * log(p + eps()) - (1 - p) * log(1 - p + eps())
 
 # Approximate conditional entropy term
 C = √((π * log(2) / 2))
-H(μ, σ) = (C / √(σ + C^2)) * exp(-0.5 * (μ^2 / (σ + C^2)))
+H(μ, σ) = (C / √(σ^2 + C^2)) * exp(-0.5 * (μ^2 / (σ^2 + C^2)))
 
 # BALD objective. Sometimes we need to dispatch on tuples
 BALD(μ, σ) = h(ϕ(μ, σ)) - H(μ, σ)
