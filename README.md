@@ -1,7 +1,7 @@
 # AIDA
 AIDA is an **A**ctive **I**nference-based **D**esign **A**gent that aims at real-time situated client-driven design of audio processing algoritms
 
-# Get data
+## Get data
 We use DVC tool to store/track the dataset that's used in this project.
 To obtain the datasets please run the following commands.
 ```bash
@@ -15,6 +15,11 @@ To obtain the dataset for the validation experiments, please run in the project 
 ```
 dvc get git@github.com:biaslab/AIDA-data.git sound
 ```
+## Run experiments
+To run the experiments, execute the following commands in **Julia REPL**
+
+1. <code>] activate .</code>
+2. <code>] instantiate</code>
 
 ### AIDA folders structure
 ```
