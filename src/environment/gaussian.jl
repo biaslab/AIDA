@@ -17,7 +17,7 @@ end
 function gaussian_inference(outputs, niter; priors=Dict(:aτ => 1e-4, :bτ => 1.0))
     n = length(outputs)
     @unpack aτ, bτ = priors
-    model, (y, x, τ) = gaussian_model(n, aτ, bτ, options = (limit_stack_depth = 500, ))
+    model, (y, x, τ) = gaussian_model(model_options(limit_stack_depth = 500, ), n, aτ, bτ)
     τ_buffer = nothing
     x_buffer = nothing
     fe = Vector{Float64}()

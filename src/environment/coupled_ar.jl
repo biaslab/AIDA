@@ -90,7 +90,7 @@ function coupled_inference(data, prior_η, prior_τ, order_1, order_2, niter)
     artype = Multivariate
     c1 = zeros(order_1); c1[1] = 1.0
     c2 = zeros(order_2); c2[1] = 1.0
-    model, (o, z, z1, θ, γ, x, x1, η, τ, ar_1_nodes, ar_2_nodes, scheduler) = coupled_model(n, prior_η, prior_τ, order_1, order_2, artype, c1, c2, options=(limit_stack_depth=100, ))
+    model, (o, z, z1, θ, γ, x, x1, η, τ, ar_1_nodes, ar_2_nodes, scheduler) = coupled_model(model_options(limit_stack_depth=100, ), n, prior_η, prior_τ, order_1, order_2, artype, c1, c2)
     γ_buffer = nothing
     θ_buffer = nothing
     x_buffer = Vector{Marginal}(undef, n)
@@ -230,7 +230,7 @@ function coupled_inference_tvar(data, prior_η, prior_τ, order_1, order_2, nite
     artype = Multivariate
     c1 = zeros(order_1); c1[1] = 1.0
     c2 = zeros(order_2); c2[1] = 1.0
-    model, (o, z, z1, θ, γ, x, x1, η, τ, ar_1_nodes, ar_2_nodes, scheduler) = coupled_model_tvar(n, prior_η, prior_τ, order_1, order_2, artype, c1, c2, ω, options=(limit_stack_depth=100, ))
+    model, (o, z, z1, θ, γ, x, x1, η, τ, ar_1_nodes, ar_2_nodes, scheduler) = coupled_model_tvar(model_options(limit_stack_depth=100, ), n, prior_η, prior_τ, order_1, order_2, artype, c1, c2, ω)
 
     γ_buffer = nothing
     θ_buffer = Vector{Marginal}(undef, n)

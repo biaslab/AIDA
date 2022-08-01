@@ -19,7 +19,7 @@ end
 function ar_inference(inputs, outputs, order, niter; priors=Dict(:μθ => zeros(order), :Λθ => diageye(order), :aγ => 1e-4, :bγ => 1.0))
     n = length(outputs)
     @unpack μθ, Λθ, aγ, bγ = priors
-    model, (x, y, θ, γ) = ar_model(n, μθ, Λθ, aγ, bγ, options = (limit_stack_depth = 100, ))
+    model, (x, y, θ, γ) = ar_model(model_options(limit_stack_depth = 100, ), n, μθ, Λθ, aγ, bγ)
 
     γ_buffer = nothing
     θ_buffer = nothing
