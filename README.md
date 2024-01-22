@@ -2,6 +2,10 @@
 AIDA is an **A**ctive **I**nference-based **D**esign **A**gent that aims at real-time situated client-driven design of audio processing algoritms
 
 ## Get data
+### DISCLAIMER:
+```if you have problems downloading the dataset with DVC, please contact the authors of the project```
+
+
 We use DVC tool to store/track the dataset that's used in this project.
 To obtain the datasets please run the following commands.
 ```bash
